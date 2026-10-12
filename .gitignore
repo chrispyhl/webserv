@@ -1,1 +1,5 @@
 docs/craabe/*
+/obj/
+/webserv
+/.vscode/
+configs/unopenable.conf
