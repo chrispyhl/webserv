@@ -33,10 +33,7 @@ Config parseConfig(int argc, char **argv)
 		filepath = argv[1];
 	std::fstream filestream = get_filestream(filepath);
 	
-	// DEBUG
-	for (std::string line; std::getline(filestream, line);)
-		std::cout << line << std::endl;
-	// DEBUG OVER
+	
 
 	Config config;
 	return (config);
