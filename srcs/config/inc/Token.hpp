@@ -11,6 +11,7 @@ enum class TokenType
 	SEMICOLON,
 	END
 };
+// END gets _text "end of file" for comprehensive error message output
 
 class Token
 {
