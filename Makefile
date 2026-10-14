@@ -30,6 +30,9 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
+run: all
+	@./webserv
+
 clean:
 	@$(RM) $(OBJ_DIR)
 	@echo "Cleaned up objects."
