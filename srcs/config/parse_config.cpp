@@ -1,4 +1,5 @@
 #include "parse_config.hpp"
+#include "Config.hpp"
 #include "Token.hpp"
 
 #include <cctype>
@@ -16,14 +17,7 @@ static std::ifstream get_filestream(const std::string &filepath)
 	std::ifstream filestream(filepath);
 	// std::ifstreams destructor closes the FD automatically; no filestream.close() needed!
 	if (!filestream.is_open())
-		throw std::invalid_argument("ERROR: unable to open file.");
-	// catch paths to folders and empty files
-	std::string line;
-	getline(filestream, line);
-	if (filestream.fail())
-		throw std::invalid_argument("ERROR: unable to read file.");
-	// reset filestream (otherwise, first line would be consumed) before returning
-	filestream.seekg(0);
+		throw std::invalid_argument("ERROR: unable to open config file.");
 	return (filestream);
 }
 
@@ -157,23 +151,26 @@ static std::ifstream get_filestream(const std::string &filepath)
 // 	return (tokens);
 // }
 
-static std::vector<Token> tokenize(const std::string &str)
-{
-}
-
 static std::string condense_to_string(std::ifstream &filestream)
 {
-	std::string str = "";
+	std::string str;
 	std::string line;
+	// reminder: getline() reads char by char until it hits a newline (swallows it) or runs out of data (sets .eof())
 	while (getline(filestream, line))
 	{
 		str += line;
+		if (!filestream.eof())
+			str += '\n';
 	}
-	// add final newline if file ends on newline
-	if (line.back() == '\n')
-		str += '\n';
+	// throws if getline returns error or if a path to a directory (not file!) was provided (both set .bad() = 1)
+	if (filestream.bad())
+		throw std::runtime_error("ERROR: failed to read config file.");
 	return (str);
 }
+
+// static std::vector<Token> tokenize(const std::string &str)
+// {
+// }
 
 Config parseConfig(int argc, char **argv)
 {
@@ -181,14 +178,20 @@ Config parseConfig(int argc, char **argv)
 		throw std::invalid_argument("ERROR: invalid argument provided.\nCall via:\n\t\"./webserv\" (uses default path)\nor\n\t \"./webserv [PATH TO CONFIG FILE]\"");
 	std::string filepath;
 	if (argc == 1)
-		filepath = "./configs/webserv.conf";
+		filepath = DEFAULT_CONFIG;
 	else
 		filepath = argv[1];
 	std::ifstream filestream = get_filestream(filepath);
 
-	std::vector<Token> tokens = tokenize(condense_to_string(filestream));
-	if (tokens.back().tokenType() != TokenType::END)
-		throw std::logic_error("ERROR/DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
+	// DEBUG
+	std::string str = condense_to_string(filestream);
+	std::cout << str;
+	// DEBUG END
+
+	// std::vector<Token> tokens = tokenize(condense_to_string(filestream));
+
+	// if (tokens.back().tokenType() != TokenType::END)
+	// 	throw std::logic_error("ERROR/DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
 
 	Config config;
 	return (config);
