@@ -5,6 +5,7 @@
 #include <cctype>
 #include <fstream> // for std::ifstream
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -21,135 +22,87 @@ static std::ifstream get_filestream(const std::string &filepath)
 	return (filestream);
 }
 
-// static Token tokenize_delims(char c, std::size_t line_c)
-// {
-// 	TokenType token_type;
-// 	std::string text;
-// 	switch (c)
-// 	{
-// 		case ('{'):
-// 		{
-// 			token_type = TokenType::LBRACE;
-// 			text = "{";
-// 			break;
-// 		}
-// 		case ('}'):
-// 		{
-// 			token_type = TokenType::RBRACE;
-// 			text = "}";
-// 			break;
-// 		}
-// 		case (';'):
-// 		{
-// 			token_type = TokenType::SEMICOLON;
-// 			text = ";";
-// 			break;
-// 		}
-// 	}
-// 	Token token(token_type, text, line_c);
-// 	return (token);
-// }
+static Token tokenize_delims(char c, std::size_t line_c)
+{
+	TokenType token_type;
+	std::string text;
+	switch (c)
+	{
+		case ('{'):
+		{
+			token_type = TokenType::LBRACE;
+			text = "{";
+			break;
+		}
+		case ('}'):
+		{
+			token_type = TokenType::RBRACE;
+			text = "}";
+			break;
+		}
+		case (';'):
+		{
+			token_type = TokenType::SEMICOLON;
+			text = ";";
+			break;
+		}
+	}
+	Token token(token_type, text, line_c);
+	return (token);
+}
 
-// static std::string create_err_msg(std::string msg, std::size_t line_c)
-// {
-// 	std::string error_msg = msg;
-// 	error_msg += line_c;
-// 	error_msg += ".";
-// 	return (error_msg);
-// }
+static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t &line_c, char quote = 'x')
+{
+	std::string text;
+	// word ends upon delimiter or a whitespace also used by nginx
+	std::string word_end = "{};\n \t\n\r";
+	// a newline in quotes should only increment line_c after the WORD was stored
+	// rule: each token gets the line where it starts
+	std::size_t quoted_newline_c = 0;
 
-// static Token tokenize_word(const std::string &line, std::size_t line_c)
-// {
-// 	std::string word_end = "{};\n";
-// 	std::string text = "";
-// 	bool squotes = false;
-// 	bool dquotes = false;
-// 	std::size_t squote_c = 0;
-// 	std::size_t dquote_c = 0;
-
-// 	for (char c : line)
-// 	{
-// 		if (c == '"' && !squotes)
-// 		{
-// 			// switch from true to false or vice versa
-// 			// ternary is a bit overkill but I always wanted to use one
-// 			dquotes = (dquotes) ? false : true;
-// 			dquote_c++;
-// 			continue;
-// 		}
-// 		if (c == '\'' && !dquotes)
-// 		{
-// 			squotes = (squotes) ? false : true;
-// 			squote_c++;
-// 			continue;
-// 		}
-// 		else if (word_end.find(c) == std::string::npos)
-// 			text += c;
-// 		else if (word_end.find(c) != std::string::npos)
-// 		{
-// 			if (squotes || dquotes)
-// 				text += c;
-// 			else
-// 				break;
-// 		}
-// 	}
-
-// 	// verification of finished text
-// 	if (squote_c % 2 != 0)
-// 		throw std::invalid_argument(create_err_msg("ERROR: malformed config: invalid single quotes in line ", line_c));
-// 	if (dquote_c % 2 != 0)
-// 		throw std::invalid_argument(create_err_msg("ERROR: malformed config: invalid double quotes in line ", line_c));
-// 	Token token(TokenType::WORD, text, line_c);
-// 	return (token);
-// }
-
-// static std::vector<Token> tokenize(std::ifstream &filestream)
-// {
-// 	std::vector<Token> tokens;
-// 	std::size_t line_c = 1;
-// 	std::string delimiter = "{};";
-
-// 	while (true)
-// 	{
-// 		if (filestream.eof())
-// 			break;
-
-// 		std::string line;
-// 		getline(filestream, line);
-// 		std::size_t pos = 0;
-// 		for (char c : line)
-// 		{
-// 			// NEWLINE ADVANCE
-// 			if (c == '\n')
-// 			{
-// 				line_c++;
-// 				break;
-// 			}
-// 			// WHITESPACE SKIP
-// 			if (std::isspace(static_cast<unsigned char>(c))) // cast to handle umlauts and the like; exceed 127, which wraps to negative, which causes undefined behavior in  std::isspace()
-// 			{
-// 				pos++;
-// 				continue;
-// 			} // COMMENT ADVANCE
-// 			if (c == '#')
-// 			{
-// 				line_c++;
-// 				break;
-// 			}
-// 			if (delimiter.find(c) != std::string::npos)
-// 			{
-// 				tokens.push_back(tokenize_delims(c, line_c));
-// 				pos++;
-// 			}
-// 			else
-// 			{
-// 				tokens.push_back(tokenize_word(line, line_c));
-// 				pos += tokens.back().text().length();
-// 			}
-// 		}
-// 	}
-// 	return (tokens);
-// }
+	if (quote == 'x')
+	{
+		while (word_end.find(str[pos]) == std::string::npos)
+		{
+			text += str[pos];
+			pos++;
+		}
+		if (str[pos] == '\n')
+		{
+			line_c++;
+			pos++;
+		}
+	}
+	else
+	{
+		if (quote == '\'')
+			while (str[pos] != '\'' && str[pos])
+			{
+				text += str[pos];
+				if (str[pos] == '\n')
+					quoted_newline_c++;
+				pos++;
+			}
+		else if (quote == '"')
+			while (str[pos] != '"' && str[pos])
+			{
+				text += str[pos];
+				if (str[pos] == '\n')
+					quoted_newline_c++;
+				pos++;
+			}
+		if (!str[pos])
+		{
+			std::string error_msg = "ERROR: unclosed quotes in line: " + std::to_string(line_c);
+			throw std::invalid_argument(error_msg);
+		}
+		// consume quote
+		pos++;
+	}
+	Token token(TokenType::WORD, text, line_c);
+	line_c += quoted_newline_c;
+	return (token);
+}
 
 static std::string condense_to_string(std::ifstream &filestream)
 {
@@ -168,8 +121,101 @@ static std::string condense_to_string(std::ifstream &filestream)
 	return (str);
 }
 
-// static std::vector<Token> tokenize(const std::string &str)
+static std::vector<Token> tokenize(const std::string &str)
+{
+	// result setup
+	std::vector<Token> tokens;
+	std::size_t line_c = 1;
+
+	// string traversal setup
+	std::string delimiter = "{};";
+	std::string whitespace = " \t\n\r";
+	std::size_t pos = 0;
+	std::size_t str_len = str.length();
+
+	// quotes management setup
+	bool squotes = false;
+	bool dquotes = false;
+
+	while (pos < str_len)
+	{
+		char c = str[pos];
+
+		if (str[pos] == '#')
+			while (str[pos] != '\n' && str[pos])
+				pos++;
+
+		else if (c == '"' && !squotes)
+		{
+			// switch from true to false or vice versa
+			// ternary is a bit overkill but I always wanted to use one
+			dquotes = (dquotes) ? false : true;
+			pos++;
+		}
+		else if (c == '\'' && !dquotes)
+		{
+			squotes = (squotes) ? false : true;
+			pos++;
+		}
+		else if (!squotes && !dquotes)
+		{
+			// DELIMITER
+			if (delimiter.find(c) != std::string::npos)
+			{
+				tokens.push_back(tokenize_delims(c, line_c));
+				pos++;
+			}
+			// WORD
+			else
+			{
+				if (c == '\n')
+				{
+					pos++;
+					line_c++;
+				}
+				else if (whitespace.find(c) != std::string::npos)
+					pos++;
+				else
+					tokens.push_back(tokenize_word(str, pos, line_c));
+			}
+		}
+		// QUOTED WORD
+		else
+		{
+			if (squotes)
+			{
+				tokens.push_back(tokenize_word(str, pos, line_c, '\''));
+				squotes = false;
+			}
+			else
+			{
+				tokens.push_back(tokenize_word(str, pos, line_c, '"'));
+				dquotes = false;
+			}
+		}
+	}
+	// emplace_back contstructs a T (here: Token) from the given arguments in the container's memory storage and push_backs it
+	tokens.emplace_back(TokenType::END, "end of file", line_c);
+	return (tokens);
+}
+
+// TODO: mixed up braces and quotes here, needs total rework
+
+// void verify_tokens(const std::vector<Token> &tokens)
 // {
+// 	std::string required_after_quote = " \t\n\r";
+// 	for (auto it = tokens.begin(); it != tokens.end(); it++)
+// 	{
+// 		if (it->tokenType() == TokenType::RBRACE)
+// 		{
+// 			it++;
+// 			if (required_after_rbrace.find(it->text()) == std::string::npos)
+// 			{
+// 				std::string error_msg = "ERROR: unexpected \"" + it->text() + "\" in line " + std::to_string(it->line()) + ").";
+// 				throw std::invalid_argument(error_msg);
+// 			}
+// 		}
+// 	}
 // }
 
 Config parseConfig(int argc, char **argv)
@@ -183,15 +229,19 @@ Config parseConfig(int argc, char **argv)
 		filepath = argv[1];
 	std::ifstream filestream = get_filestream(filepath);
 
+	std::vector<Token> tokens = tokenize(condense_to_string(filestream));
+
+	if (tokens.back().tokenType() != TokenType::END)
+		throw std::logic_error("DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
+
 	// DEBUG
-	std::string str = condense_to_string(filestream);
-	std::cout << str;
+	for (Token t : tokens)
+	{
+		std::cout << "line " << t.line() << " = " << t.tokenTypeString() << ": " << t.text() << "\n";
+	}
 	// DEBUG END
 
-	// std::vector<Token> tokens = tokenize(condense_to_string(filestream));
-
-	// if (tokens.back().tokenType() != TokenType::END)
-	// 	throw std::logic_error("ERROR/DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
+	// verify_tokens(tokens);
 
 	Config config;
 	return (config);
