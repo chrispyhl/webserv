@@ -51,6 +51,24 @@ static Token tokenize_delims(char c, std::size_t line_c)
 	return (token);
 }
 
+static void check_after_quote(const std::string &str, std::size_t pos, std::size_t line_c)
+{
+	// check for missing closing quote
+	if (!str[pos])
+	{
+		std::string error_msg = "ERROR: unclosed quotes in line: " + std::to_string(line_c);
+		throw std::invalid_argument(error_msg);
+	}
+
+	// check for illegal character after closing quote
+	std::string allowed_chars = " \t\n\r";
+	if (str[pos + 1] && allowed_chars.find(str[pos + 1]) == std::string::npos)
+	{
+		std::string error_msg = "ERROR: unexpected \"" + std::to_string(str[pos + 1]) + "\" in line " + std::to_string(line_c) + ").";
+		throw std::invalid_argument(error_msg);
+	}
+}
+
 static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t &line_c, char quote = 'x')
 {
 	std::string text;
@@ -76,6 +94,7 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 	else
 	{
 		if (quote == '\'')
+		{
 			while (str[pos] != '\'' && str[pos])
 			{
 				text += str[pos];
@@ -83,6 +102,7 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 					quoted_newline_c++;
 				pos++;
 			}
+		}
 		else if (quote == '"')
 			while (str[pos] != '"' && str[pos])
 			{
@@ -91,11 +111,8 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 					quoted_newline_c++;
 				pos++;
 			}
-		if (!str[pos])
-		{
-			std::string error_msg = "ERROR: unclosed quotes in line: " + std::to_string(line_c);
-			throw std::invalid_argument(error_msg);
-		}
+		check_after_quote(str, pos, line_c);
+
 		// consume quote
 		pos++;
 	}
@@ -198,25 +215,6 @@ static std::vector<Token> tokenize(const std::string &str)
 	tokens.emplace_back(TokenType::END, "end of file", line_c);
 	return (tokens);
 }
-
-// TODO: mixed up braces and quotes here, needs total rework
-
-// void verify_tokens(const std::vector<Token> &tokens)
-// {
-// 	std::string required_after_quote = " \t\n\r";
-// 	for (auto it = tokens.begin(); it != tokens.end(); it++)
-// 	{
-// 		if (it->tokenType() == TokenType::RBRACE)
-// 		{
-// 			it++;
-// 			if (required_after_rbrace.find(it->text()) == std::string::npos)
-// 			{
-// 				std::string error_msg = "ERROR: unexpected \"" + it->text() + "\" in line " + std::to_string(it->line()) + ").";
-// 				throw std::invalid_argument(error_msg);
-// 			}
-// 		}
-// 	}
-// }
 
 Config parseConfig(int argc, char **argv)
 {
