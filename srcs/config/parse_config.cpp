@@ -180,23 +180,22 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 	else
 	{
 		char q = str[pos];
-		if (str[pos] == q)
+
+		pos++;
+		while (str[pos] != q && str[pos])
 		{
-			pos++;
-			while (str[pos] != q && str[pos])
+			if (str[pos] == '\\')
+				handle_backslash(str, pos, text, quoted_newline_c);
+			else
 			{
-				if (str[pos] == '\\')
-					handle_backslash(str, pos, text, quoted_newline_c);
-				else
-				{
-					text += str[pos];
-					if (str[pos] == '\n')
-						quoted_newline_c++;
-					pos++;
-				}
+				text += str[pos];
+				if (str[pos] == '\n')
+					quoted_newline_c++;
+				pos++;
 			}
-			check_closing_quote(str, pos, line_c + quoted_newline_c);
 		}
+		check_closing_quote(str, pos, line_c + quoted_newline_c);
+
 		// consume closing quote
 		pos++;
 	}
