@@ -2,4 +2,4 @@
 
 #include "Config.hpp"
 
-Config parseConfig(int argc, char **argv);
+Config parse_config(int argc, char **argv);
