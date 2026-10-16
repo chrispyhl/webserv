@@ -7,10 +7,11 @@ int main(int argc, char **argv)
 {
 	try
 	{
-		Config config = parseConfig(argc, argv);
+		Config config = parse_config(argc, argv);
 		(void)config;
 		std::cout << "DEBUG: file accessed successfully!" << "\n";
 	}
+	// catches all used exceptions, including ConfigError (inherits from std::exception via std::runtime_error)
 	catch (const std::exception &e)
 	{
 		std::cerr << e.what() << "\n";
