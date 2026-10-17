@@ -71,18 +71,19 @@ static Token tokenize_delims(char c, std::size_t line_c)
 
 static void check_closing_quote(const std::string &str, std::size_t pos, std::size_t line_c)
 {
-	// check for missing closing quote
 	if (!str[pos])
 	{
+		// check for null terminator in middle of string
+		if (pos < str.length())
+			throw ConfigError("unexpected \"\\0\"", line_c);
+		// check for missing closing quote
 		throw ConfigError("unexpected end of file, expecting \";\" or \"}\"", line_c);
 	}
 
 	// check for illegal character after closing quote
 	std::string allowed_chars = " \t\n\r;{";
 	if (str[pos + 1] && allowed_chars.find(str[pos + 1]) == std::string::npos)
-	{
 		throw ConfigError("unexpected \"" + std::string(1, str[pos + 1]) + "\"", line_c);
-	}
 }
 
 // passing pos and line_c NOT as reference: scout ahead in string without actually incrementing
@@ -151,7 +152,7 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 {
 	std::string text;
 	// word ends upon delimiter or a whitespace also used by nginx
-	std::string ends_word = "{};\n \t\n\r";
+	std::string ends_word = "{;\n \t\n\r";
 	// a newline in quotes should only increment line_c after the WORD was stored
 	// rule: each token gets the line where it starts
 	std::size_t quoted_newline_c = 0;
@@ -161,8 +162,20 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 	{
 		while (str[pos] && ends_word.find(str[pos]) == std::string::npos)
 		{
+			// handle envar indicator ${ (WORD doesn't stop at {)
+			if (str[pos] == '$' && str[pos + 1] == '{')
+			{
+				text += "${";
+				pos += 2;
+				// nginx's tokenizer accepts stuff like: ${{x (gets rejected by nginx's parser) --> same behavior intended here
+				while (str[pos] == '{')
+				{
+					text += str[pos];
+					pos++;
+				}
+			}
 			// handle unquoted backslash -> next char is escaped
-			if (str[pos] == '\\')
+			else if (str[pos] == '\\')
 				handle_backslash(str, pos, text, quoted_newline_c);
 			else
 			{
@@ -181,7 +194,9 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 	{
 		char q = str[pos];
 
+		// consume quote
 		pos++;
+
 		while (str[pos] != q && str[pos])
 		{
 			if (str[pos] == '\\')
@@ -224,7 +239,11 @@ static std::vector<Token> tokenize(const std::string &str)
 	while (pos < str_len)
 	{
 		char c = str[pos];
-		if (c == '\n')
+		// unexpected null terminator
+		// also catches null terms that make helper stop and return to here
+		if (!str[pos])
+			throw ConfigError("unexpected \"\\0\"", line_c);
+		else if (c == '\n')
 		{
 			line_c++;
 			pos++;
