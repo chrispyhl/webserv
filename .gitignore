@@ -1,4 +1,5 @@
-docs/craabe/*
+/docs/craabe/
+/tests/
 /obj/
 /webserv
 /.vscode/
