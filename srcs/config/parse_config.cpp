@@ -86,8 +86,6 @@ static void check_closing_quote(const std::string &str, std::size_t pos, std::si
 		throw ConfigError("unexpected \"" + std::string(1, str[pos + 1]) + "\"", line_c);
 }
 
-// passing pos and line_c NOT as reference: scout ahead in string without actually incrementing
-
 static void handle_backslash(const std::string &str, std::size_t &pos, std::string &text, std::size_t &quoted_newline_c)
 {
 	// backslash before these chars make backslash disappear
@@ -215,11 +213,6 @@ static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t
 		pos++;
 	}
 	Token token(TokenType::WORD, text, line_c);
-
-	// // DEBUG
-	// if (token.text().substr(0, 4) != "case")
-	// 	std::cout << "line " << token.line() << " = " << token.tokenTypeString() << ": " << token.text() << "\n";
-	// // DEBUG END
 
 	line_c += quoted_newline_c;
 	return (token);
