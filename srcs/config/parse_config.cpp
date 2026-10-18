@@ -2,6 +2,7 @@
 #include "Config.hpp"
 #include "ConfigError.hpp"
 #include "Token.hpp"
+#include "Tokenizer.hpp"
 
 #include <cctype>
 #include <fstream> // for std::ifstream
@@ -40,225 +41,7 @@ static std::string condense_to_string(std::ifstream &filestream)
 	return (str);
 }
 
-static Token tokenize_delims(char c, std::size_t line_c)
-{
-	TokenType token_type;
-	std::string text;
-	switch (c)
-	{
-		case ('{'):
-		{
-			token_type = TokenType::LBRACE;
-			text = "{";
-			break;
-		}
-		case ('}'):
-		{
-			token_type = TokenType::RBRACE;
-			text = "}";
-			break;
-		}
-		case (';'):
-		{
-			token_type = TokenType::SEMICOLON;
-			text = ";";
-			break;
-		}
-	}
-	Token token(token_type, text, line_c);
-	return (token);
-}
 
-static void check_closing_quote(const std::string &str, std::size_t pos, std::size_t line_c)
-{
-	if (!str[pos])
-	{
-		// check for null terminator in middle of string
-		if (pos < str.length())
-			throw ConfigError("unexpected \"\\0\"", line_c);
-		// check for missing closing quote
-		throw ConfigError("unexpected end of file, expecting \";\" or \"}\"", line_c);
-	}
-
-	// check for illegal character after closing quote
-	std::string allowed_chars = " \t\n\r;{)";
-	if (str[pos + 1] && allowed_chars.find(str[pos + 1]) == std::string::npos)
-		throw ConfigError("unexpected \"" + std::string(1, str[pos + 1]) + "\"", line_c);
-}
-
-static void handle_backslash(const std::string &str, std::size_t &pos, std::string &text, std::size_t &quoted_newline_c)
-{
-	// backslash before these chars make backslash disappear
-	std::string consumes_backslash = "'\"\\";
-	std::string converts_backslash = "nrt";
-
-	if (str[pos + 1])
-	{
-		if (consumes_backslash.find(str[pos + 1]) != std::string::npos)
-		{
-			// consume backslash
-			pos++;
-			text += str[pos];
-			pos++;
-		}
-		else if (converts_backslash.find(str[pos + 1]) != std::string::npos)
-		{
-			// consume backslash
-			pos++;
-			switch (str[pos])
-			{
-				case ('n'):
-				{
-					text += '\n';
-					break;
-				}
-				case ('r'):
-				{
-					text += '\r';
-					break;
-				}
-				case ('t'):
-				{
-					text += '\t';
-					break;
-				}
-			}
-			// consume letter
-			pos++;
-		}
-		else
-		{
-			// add backslash
-			text += str[pos];
-			pos++;
-			text += str[pos];
-			if (str[pos] == '\n')
-				quoted_newline_c++;
-			pos++;
-		}
-	}
-	// backslash is the last char of the file: keep it as a literal char
-	// (an unfinished directive at end of file is reported by the parser)
-	else
-	{
-		text += str[pos];
-		pos++;
-	}
-}
-
-static Token tokenize_word(const std::string &str, std::size_t &pos, std::size_t &line_c)
-{
-	std::string text;
-	// word ends upon delimiter or a whitespace also used by nginx
-	std::string ends_word = "{;\n \t\n\r";
-	// a newline in quotes should only increment line_c after the WORD was stored
-	// rule: each token gets the line where it starts
-	std::size_t quoted_newline_c = 0;
-
-	// CASE 1: no quote starting the WORD
-	if (str[pos] != '\'' && str[pos] != '"')
-	{
-		while (str[pos] && ends_word.find(str[pos]) == std::string::npos)
-		{
-			// handle envar indicator ${ (WORD doesn't stop at {)
-			if (str[pos] == '$' && str[pos + 1] == '{')
-			{
-				text += "${";
-				pos += 2;
-				// nginx's tokenizer accepts stuff like: ${{x (gets rejected by nginx's parser) --> same behavior intended here
-				while (str[pos] == '{')
-				{
-					text += str[pos];
-					pos++;
-				}
-			}
-			// handle unquoted backslash -> next char is escaped
-			else if (str[pos] == '\\')
-				handle_backslash(str, pos, text, quoted_newline_c);
-			else
-			{
-				text += str[pos];
-				pos++;
-			}
-		}
-		if (str[pos] == '\n')
-		{
-			quoted_newline_c++;
-			pos++;
-		}
-	}
-	// CASE 2: quote starts the WORD
-	else
-	{
-		char q = str[pos];
-
-		// consume quote
-		pos++;
-
-		while (str[pos] != q && str[pos])
-		{
-			if (str[pos] == '\\')
-				handle_backslash(str, pos, text, quoted_newline_c);
-			else
-			{
-				text += str[pos];
-				if (str[pos] == '\n')
-					quoted_newline_c++;
-				pos++;
-			}
-		}
-		check_closing_quote(str, pos, line_c + quoted_newline_c);
-
-		// consume closing quote
-		pos++;
-	}
-	Token token(TokenType::WORD, text, line_c);
-
-	line_c += quoted_newline_c;
-	return (token);
-}
-
-// basically just decides what handler to use for a given char
-static std::vector<Token> tokenize(const std::string &str)
-{
-	std::vector<Token> tokens;
-	std::size_t line_c = 1;
-	std::size_t pos = 0;
-	std::size_t str_len = str.length();
-
-	std::string delimiter = "{};";
-	std::string whitespace = " \t\n\r";
-
-	while (pos < str_len)
-	{
-		char c = str[pos];
-		// unexpected null terminator
-		// also catches null terms that make helper stop and return to here
-		if (!str[pos])
-			throw ConfigError("unexpected \"\\0\"", line_c);
-		else if (c == '\n')
-		{
-			line_c++;
-			pos++;
-		}
-		else if (whitespace.find(c) != std::string::npos)
-			pos++;
-		else if (c == '#')
-			while (str[pos] && str[pos] != '\n')
-				pos++;
-		else if (delimiter.find(c) != std::string::npos)
-		{
-			tokens.push_back(tokenize_delims(c, line_c));
-			// consume delim
-			pos++;
-		}
-		else
-			tokens.push_back(tokenize_word(str, pos, line_c));
-	}
-	// emplace_back contstructs a T (here: Token) from the given arguments in the container's memory storage and push_backs it
-	tokens.emplace_back(TokenType::END, "end of file", line_c);
-	return (tokens);
-}
 
 Config parse_config(int argc, char **argv)
 {
@@ -274,7 +57,8 @@ Config parse_config(int argc, char **argv)
 	try
 	{
 		std::ifstream filestream = get_filestream(filepath);
-		tokens = tokenize(condense_to_string(filestream));
+		Tokenizer t(condense_to_string(filestream));
+		tokens = t.tokenize();
 	}
 	catch (const ConfigError &c)
 	{

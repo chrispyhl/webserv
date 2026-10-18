@@ -14,9 +14,10 @@ CONF_DIR = $(SRC_DIR)/config
 INC_DIRS =	$(CONF_DIR)/inc
 
 SRC =	$(SRC_DIR)/main.cpp \
-		$(CONF_DIR)/Config.cpp \
 		$(CONF_DIR)/parse_config.cpp \
+		$(CONF_DIR)/Tokenizer.cpp \
 		$(CONF_DIR)/Token.cpp \
+		$(CONF_DIR)/Config.cpp \
 		$(CONF_DIR)/ConfigError.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
