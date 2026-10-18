@@ -10,11 +10,14 @@ class Tokenizer
 	public:
 		Tokenizer(const std::string &str);
 		std::vector<Token> tokenize();
-		Token tokenize_word();
-		void handle_backslash(std::string &text, std::size_t &quoted_newline_c);
 
 	private:
+		// members
 		const std::string _str;
 		std::size_t _pos;
 		std::size_t _line;
+		// helpers
+		Token tokenizeWord();
+		void handleBackslash(std::string &text, std::size_t &quoted_newline_c);
+		void checkClosingQuote(std::size_t line_temp);
 };

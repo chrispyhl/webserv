@@ -4,7 +4,6 @@
 #include "Token.hpp"
 #include "Tokenizer.hpp"
 
-#include <cctype>
 #include <fstream> // for std::ifstream
 #include <iostream>
 #include <optional>
@@ -41,8 +40,6 @@ static std::string condense_to_string(std::ifstream &filestream)
 	return (str);
 }
 
-
-
 Config parse_config(int argc, char **argv)
 {
 	if (argc > 2)
@@ -64,18 +61,13 @@ Config parse_config(int argc, char **argv)
 	{
 		throw std::runtime_error(c.format(filepath));
 	}
-	// ConfigError inherits from std::exception
-	// this is why this catch needs to come second, otherwise it would always come first (ConfigError is a std::runtime_error is a std::stdexception)
-	catch (const std::exception &e)
-	{
-		throw;
-	}
+	// any non-ConfigError gets send to caller automatically
 
 	if (tokens.back().tokenType() != TokenType::END)
 		throw std::logic_error("DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
 
 	// DEBUG
-	for (Token t : tokens)
+	for (const Token &t : tokens)
 	{
 		std::cout << "line " << t.line() << " = " << t.tokenTypeString() << ": " << t.text() << "\n";
 	}
