@@ -81,7 +81,7 @@ static void check_closing_quote(const std::string &str, std::size_t pos, std::si
 	}
 
 	// check for illegal character after closing quote
-	std::string allowed_chars = " \t\n\r;{";
+	std::string allowed_chars = " \t\n\r;{)";
 	if (str[pos + 1] && allowed_chars.find(str[pos + 1]) == std::string::npos)
 		throw ConfigError("unexpected \"" + std::string(1, str[pos + 1]) + "\"", line_c);
 }
