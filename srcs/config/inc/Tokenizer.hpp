@@ -12,12 +12,15 @@ class Tokenizer
 		std::vector<Token> tokenize();
 
 	private:
+		// helpers
+		Token tokenizeWord();
+		std::string unquotedWord();
+		std::string quotedWord();
+		void handleBackslash(std::string &text);
+		void checkClosingQuote();
+		void advance();
 		// members
 		const std::string _str;
 		std::size_t _pos;
 		std::size_t _line;
-		// helpers
-		Token tokenizeWord();
-		void handleBackslash(std::string &text, std::size_t &quoted_newline_c);
-		void checkClosingQuote(std::size_t line_temp);
 };

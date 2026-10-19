@@ -26,7 +26,7 @@ std::string Token::tokenTypeString() const
 		case (TokenType::END):
 			return ("END");
 	}
-	throw std::logic_error("ERROR/DEBUG: tokenTypeString() revealed _type that somehow isn't in TokenType definition. Someone did some static_casting.");
+	throw std::logic_error("DEBUG: tokenTypeString() revealed _type that somehow isn't in TokenType definition. Someone did some static_casting.");
 }
 
 const std::string &Token::text() const

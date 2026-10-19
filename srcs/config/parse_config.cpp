@@ -62,7 +62,7 @@ Config parse_config(int argc, char **argv)
 		throw std::runtime_error(c.format(filepath));
 	}
 	// any non-ConfigError gets send to caller automatically
-
+	
 	if (tokens.back().tokenType() != TokenType::END)
 		throw std::logic_error("DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
 
