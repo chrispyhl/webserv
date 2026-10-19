@@ -3,17 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   server_test.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/12 14:18:21 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/13 16:10:00 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/19 14:57:26 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "incs.hpp"
-#include <sys/socket.h>
-#include <iostream>
-#include <netinet/in.h>
 
 int main(){
 	// 1. Create Socket
@@ -28,6 +25,7 @@ int main(){
 	int	opt = 1;
 	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0){
 		std::cerr << RED << "setsocket failed!" << RESET << std::endl;
+		close (server_fd);
 		return 1;
 	}
 
@@ -57,7 +55,7 @@ int main(){
 	sockaddr_in	client_address{};
 	socklen_t	addr_len = sizeof(client_address);
 	// Stop until client connection
-	int	client_socket = accept(server_fd, (struct sockaddr*)&client_address, &addr_len);
+	int	client_socket = accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_address), &addr_len);
 
 	if (client_socket < 0){
 		std::cerr << RED << "Accept failed!" << RESET <<std::endl;
@@ -83,7 +81,13 @@ int main(){
 		// Option: Send response to client
 		const char	*response = "Message received!\n";
 		ssize_t output = send(client_socket, response, strlen(response), 0);
-		if (sizeof(output) < sizeof(response))
+		if (output < 0){
+			std::cerr << RED << "Response crashed!" << RESET << std::endl;
+			close (server_fd);
+			close (client_socket);
+			return 1;
+		}
+		if (output < (unsigned int)strlen(response))
 			std::cerr << RED << "Response wasn't fully sent!" << RESET << std::endl;
 		memset(buffer, 0, sizeof(buffer));
 	}

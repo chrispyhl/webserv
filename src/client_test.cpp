@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   client_test.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 15:08:04 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/13 16:04:34 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/19 14:19:16 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,7 @@ int main(){
 	}
 
 	// 3. Connect to server
-	if (connect(client_fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0){
+	if (connect(client_fd, reinterpret_cast<struct sockaddr*>(&server_address), sizeof(server_address)) < 0){
 		std::cerr << RED << "Connection to server failed!" << RESET << std::endl;
 		return 1;
 	}

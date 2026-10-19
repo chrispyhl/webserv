@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   incs.hpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 14:28:56 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/13 15:18:02 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/19 16:14:50 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,12 @@
 #include <stdlib.h>
 #include <cstring>
 #include <unistd.h>
+// Socket
+#include <sys/socket.h>
+#include <iostream>
+#include <netinet/in.h>
+
+#include <utility>
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"
