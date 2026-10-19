@@ -1,6 +1,8 @@
 #include "parse_config.hpp"
 #include "Config.hpp"
 #include "ConfigError.hpp"
+#include "Directive.hpp"
+#include "Parser.hpp"
 #include "Token.hpp"
 #include "Tokenizer.hpp"
 
@@ -40,6 +42,25 @@ static std::string condense_to_string(std::ifstream &filestream)
 	return (str);
 }
 
+static void debug_print_parser(const std::vector<Directive> &directives)
+{
+	for (Directive d : directives)
+	{
+		std::cout << "name: " << d.name << "\nargs: [";
+		for (std::string s : d.args)
+			std::cout << s << " ";
+		std::cout << "]\nline: " << d.line << "\n";
+		if (!d.children.has_value())
+			std::cout << "NO CHILDREN\n";
+		else
+		{
+			std::cout << "------\nCHILDREN\n";
+			debug_print_parser(d.children.value());
+			std::cout << "------\n";
+		}
+	}
+}
+
 Config parse_config(int argc, char **argv)
 {
 	if (argc > 2)
@@ -51,26 +72,35 @@ Config parse_config(int argc, char **argv)
 		filepath = argv[1];
 
 	std::vector<Token> tokens;
+	std::vector<Directive> directives;
 	try
 	{
 		std::ifstream filestream = get_filestream(filepath);
 		Tokenizer t(condense_to_string(filestream));
 		tokens = t.tokenize();
+		Parser parser(tokens);
+		directives = parser.parse();
 	}
 	catch (const ConfigError &c)
 	{
 		throw std::runtime_error(c.format(filepath));
 	}
 	// any non-ConfigError gets send to caller automatically
-	
+
 	if (tokens.back().tokenType() != TokenType::END)
 		throw std::logic_error("DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
 
 	// DEBUG
+	std::cout << "\n\n######################\n# LEXER TOKENS TEST #\n#####################\n\n";
 	for (const Token &t : tokens)
 	{
 		std::cout << "line " << t.line() << " = " << t.tokenTypeString() << ": " << t.text() << "\n";
 	}
+	// DEBUG END
+
+	// DEBUG
+	std::cout << "\n\n#########################\n# DIRECTIVE PARSING TEST #\n##########################\n\n";
+	debug_print_parser(directives);
 	// DEBUG END
 
 	Config config;
