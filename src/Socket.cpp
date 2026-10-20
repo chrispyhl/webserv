@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 14:39:13 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/19 16:25:37 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/20 17:28:39 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,11 +20,12 @@ Socket::Socket(){
 		throw std::runtime_error("Socket-creation failed!");
 	}
 	std::cout << GREEN << "Socket creation success. Descriptor: " << _fd << RESET << std::endl;
-	
+	set_nonblocking();
 }
 
 Socket::Socket(int fd){
 	_fd = fd;
+	set_nonblocking();
 }
 
 Socket::Socket(Socket &&other) noexcept {
@@ -48,7 +49,6 @@ void	Socket::listen_on(int port){
 	int	opt = 1;
 	if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0){
 		std::cerr << RED << "setsocket failed!" << RESET << std::endl;
-		close (_fd);
 		throw std::runtime_error("setsocket failed!");
 	}
 
@@ -61,15 +61,23 @@ void	Socket::listen_on(int port){
 	// 3. Call bind
 	if (bind(_fd, reinterpret_cast<const struct sockaddr*>(&address), sizeof(address)) < 0){
 		std::cerr << RED << "Bind failed!" << RESET << std::endl;
-		close(_fd);
 		throw std::runtime_error("Bind failed!");
 	}
 
 	// 4. Switch to listen-mode (Queue for max. 3 Connections)
 	if (listen(_fd, 3) < 0){
 		std::cerr << RED << "Listen failed!" << RESET << std::endl;
-		close(_fd);
 		throw std::runtime_error("Listen failed!");
 	}
 	std::cout << YELLOW << "Server a waiting on port:" << RESET << std::endl;
+}
+
+void	Socket::set_nonblocking(void){
+	int	ret;
+	ret = fcntl(_fd, F_SETFL, O_NONBLOCK);
+	if (ret < 0){
+		std::cerr << RED << "Non-blocking failed!" << RESET << std::endl;
+		throw std::runtime_error("Non-blocking failed!");
+	}
+	
 }

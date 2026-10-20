@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 14:34:40 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/19 16:18:21 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/20 17:32:39 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ class Socket {
 
 		int		get_fd(void);
 		void	listen_on(int port);
+		void	set_nonblocking(void);
 };
 
 #endif
