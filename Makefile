@@ -19,7 +19,8 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(CONF_DIR)/Token.cpp \
 		$(CONF_DIR)/Config.cpp \
 		$(CONF_DIR)/ConfigError.cpp \
-		$(CONF_DIR)/Parser.cpp
+		$(CONF_DIR)/Parser.cpp \
+		$(CONF_DIR)/LocationConfig.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
 
