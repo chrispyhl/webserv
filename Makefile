@@ -11,7 +11,7 @@ OBJ_DIR = obj
 CONF_DIR = $(SRC_DIR)/config
 
 # every module's include folder; turned into -I flags in CXXFLAGS
-INC_DIRS =	$(CONF_DIR)/inc
+INC_DIRS =	$(SRC_DIR)/inc $(CONF_DIR)/inc 
 
 SRC =	$(SRC_DIR)/main.cpp \
 		$(CONF_DIR)/parse_config.cpp \
