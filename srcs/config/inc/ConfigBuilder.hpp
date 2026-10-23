@@ -17,4 +17,5 @@ class ConfigBuilder
 
 	private:
 		std::vector<Directive> _directives;
+		ServerConfig buildServer(std::vector<Directive> server_directives);
 };
