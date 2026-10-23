@@ -1,24 +1,33 @@
 #pragma once
 
-#include <optional> // allowed under cpp17
+#include "ListenAddress.hpp"
+#include "LocationConfig.hpp"
+#include "Redirect.hpp"
+
+#include <cstddef>
+#include <optional>
 #include <string>
-#include <utility> // for std::map
+#include <map>
 #include <vector>
 
 class ServerConfig
 {
+		friend class ConfigBuilder;
+
 	public:
+		const std::vector<ListenAddress> &listenAddresses() const;
+		const std::vector<std::string> &serverNames() const;
+		const std::vector<LocationConfig> &locations() const;
+		const std::optional<Redirect> &redirect() const;
+		const std::map<std::size_t, std::string> &errorPages() const;
+
 	private:
-		// SERVER ONLY DIRECTIVES
-		// contains pairs of host address and ports
-		std::vector<std::pair<size_t, size_t>> _listen;
-		std::optional<std::vector<std::string>> _serverName;
-		std::optional<std::string> _location;
+		// only friend class ConfigBuilder creates ServerConfigs, hence private
+		ServerConfig();
 
-		// DIRECTIVES THAT MIGHT BE OVERRIDDEN BY LOCATION
-		// can be not-set as long as every location under it sets its own root
-		std::optional<std::string> _root;
-		std::optional<std::vector<std::string>> _index;
-
-		size_t _clientMaxBodySize;
+		std::vector<ListenAddress> _listenAddresses;
+		std::vector<std::string> _serverNames;
+		std::vector<LocationConfig> _locations;
+		std::optional<Redirect> _redirect;
+		std::map<std::size_t, std::string> _errorPages;
 };

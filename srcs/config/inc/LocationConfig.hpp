@@ -45,14 +45,16 @@ class LocationConfig
 		bool _autoIndex;
 		// limit for request bodies in bytes
 		std::size_t _maxBodySize;
-		// pairs of status code and page URL
-		std::map<std::size_t, std::string> _errorPages;
-		// code + target site OR no redirect
-		std::optional<Redirect> _redirect;
 		// accepted methods; at least GET by default (no duplicates in std::set)
 		std::set<std::string> _allowedMethods;
 		// where uploads go OR uploads disabled
 		std::optional<std::string> _uploadDirectory;
 		// pairs of file extensions and their interpreters
 		std::map<std::string, std::string> _cgiHandlers;
+
+		// these two are shared by ServerConfig and might be imported from there if no insert by Location
+		// pairs of status code and page URL
+		std::map<std::size_t, std::string> _errorPages;
+		// code + target site OR no redirect
+		std::optional<Redirect> _redirect;
 };

@@ -1,5 +1,5 @@
-#include "parse_config.hpp"
 #include "Config.hpp"
+#include "ConfigBuilder.hpp"
 #include "ConfigError.hpp"
 #include "Directive.hpp"
 #include "Parser.hpp"
@@ -103,6 +103,5 @@ Config parse_config(int argc, char **argv)
 	debug_print_parser(directives);
 	// DEBUG END
 
-	Config config;
-	return (config);
+	return (ConfigBuilder(directives).build());
 }
