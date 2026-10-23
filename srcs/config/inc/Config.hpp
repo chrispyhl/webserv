@@ -4,9 +4,7 @@
 
 #include <vector>
 
-#ifndef DEFAULT_CONFIG
-#define DEFAULT_CONFIG "./configs/webserv.conf"
-#endif
+
 
 class Config
 {

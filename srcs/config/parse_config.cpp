@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+#ifndef DEFAULT_CONFIG
+#define DEFAULT_CONFIG "./configs/webserv.conf"
+#endif
+
 static std::ifstream get_filestream(const std::string &filepath)
 {
 	// choosing ifstream over fstream means: "i" = "in" = "read" only
@@ -71,37 +75,37 @@ Config parse_config(int argc, char **argv)
 	else
 		filepath = argv[1];
 
-	std::vector<Token> tokens;
-	std::vector<Directive> directives;
 	try
 	{
+		std::vector<Token> tokens;
+		std::vector<Directive> directives;
 		std::ifstream filestream = get_filestream(filepath);
 		Tokenizer t(condense_to_string(filestream));
 		tokens = t.tokenize();
 		Parser parser(tokens);
 		directives = parser.parse();
+		// any non-ConfigError gets send to caller automatically
+
+		if (tokens.back().tokenType() != TokenType::END)
+			throw std::logic_error("DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
+
+		// // DEBUG
+		// std::cout << "\n\n######################\n# LEXER TOKENS TEST #\n#####################\n\n";
+		// for (const Token &t : tokens)
+		// {
+		// 	std::cout << "line " << t.line() << " = " << t.tokenTypeString() << ": " << t.text() << "\n";
+		// }
+		// // DEBUG END
+
+		// // DEBUG
+		// std::cout << "\n\n#########################\n# DIRECTIVE PARSING TEST #\n##########################\n\n";
+		// debug_print_parser(directives);
+		// // DEBUG END
+
+		return (ConfigBuilder(directives).build());
 	}
 	catch (const ConfigError &c)
 	{
 		throw std::runtime_error(c.format(filepath));
 	}
-	// any non-ConfigError gets send to caller automatically
-
-	if (tokens.back().tokenType() != TokenType::END)
-		throw std::logic_error("DEBUG: lexer returned malformed Token vector (does not end with END type Token).");
-
-	// DEBUG
-	std::cout << "\n\n######################\n# LEXER TOKENS TEST #\n#####################\n\n";
-	for (const Token &t : tokens)
-	{
-		std::cout << "line " << t.line() << " = " << t.tokenTypeString() << ": " << t.text() << "\n";
-	}
-	// DEBUG END
-
-	// DEBUG
-	std::cout << "\n\n#########################\n# DIRECTIVE PARSING TEST #\n##########################\n\n";
-	debug_print_parser(directives);
-	// DEBUG END
-
-	return (ConfigBuilder(directives).build());
 }
