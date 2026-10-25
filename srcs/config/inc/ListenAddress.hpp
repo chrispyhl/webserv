@@ -8,3 +8,5 @@ struct ListenAddress
 		std::uint32_t address;
 		std::uint16_t port;
 };
+
+bool operator==(const ListenAddress &a, const ListenAddress &b);
