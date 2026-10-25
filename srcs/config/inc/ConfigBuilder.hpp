@@ -7,8 +7,6 @@
 
 #include <vector>
 
-
-
 class ConfigBuilder
 {
 	public:
@@ -16,6 +14,7 @@ class ConfigBuilder
 		Config build();
 
 	private:
+		ServerConfig buildServer(const std::vector<Directive> &server_directives, std::size_t line);
+
 		std::vector<Directive> _directives;
-		ServerConfig buildServer(std::vector<Directive> server_directives);
 };

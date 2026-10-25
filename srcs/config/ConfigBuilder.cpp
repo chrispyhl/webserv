@@ -1,7 +1,8 @@
 #include "ConfigBuilder.hpp"
 #include "ConfigError.hpp"
 
-#include <algorithm>
+#include <algorithm> // for std::count()
+#include <cctype> // for std::isdigit()
 
 const std::vector<std::string> KNOWN_DIRECTIVES = {
 	"server",
@@ -41,79 +42,132 @@ static void verify_top_level(const std::vector<Directive> &directives)
 	}
 }
 
+static void verify_address_str(const std::string &address, std::size_t line)
+{
+	if (std::count(address.begin(), address.end(), '.') != 3)
+		throw ConfigError("faulty listen address", line);
+	for (char c : address)
+		if (c != '.' && !isdigit(static_cast<unsigned char>(c)))
+			throw ConfigError("faulty listen address", line);
+}
+
+static void verify_address_nums(const std::vector<std::size_t> &address_nums, std::size_t line)
+{
+	for (std::size_t n : address_nums)
+		if (n > 255)
+			throw ConfigError("faulty listen address", line);
+}
+
+static int port_str_to_int(const std::string &port, std::size_t line)
+{
+	for (char c : port)
+		if (!isdigit(static_cast<unsigned char>(c)))
+			throw ConfigError("faulty listen address port", line);
+	// 65535 is the max value of an unsigned 16bit integer
+	if (port.length() > 5)
+		throw ConfigError("faulty listen address port", line);
+	int port_int = stoi(port);
+	if (port_int > 65535 || port_int == 0)
+		throw ConfigError("faulty listen address port", line);
+	return (port_int);
+}
+
 // this helper turns strings into uint32_t and uint16_t, builds a ListenAddress struct and returns it
-static ListenAddress build_address(const std::string &address, const std::string &port, size_t line)
+static ListenAddress build_listenaddress(const std::string &address, const std::string &port, size_t line)
 {
 	ListenAddress listen_address;
 
-	if (address == "")
+	if (address == "" || address == "*")
 		listen_address.address = 0;
 	else
 	{
-		if (address.length() > 16)
-			// TODO: match nginx error here
-			throw ConfigError("faulty listen address", line);
-
-		try
+		verify_address_str(address, line);
+		std::size_t substr_start = 0;
+		std::size_t period_pos = address.find(".");
+		std::vector<std::string> octets_str;
+		while (period_pos != std::string::npos)
 		{
-			std::string str1 = address.substr(0, 4);
-			
-
-			// std::size_t octat1 = stoi;
-			// std::size_t octat2;
-			// std::size_t octat3;
-			// std::size_t octat4;
+			std::size_t substr_n = period_pos - substr_start;
+			std::string substr = address.substr(substr_start, substr_n);
+			if (substr == "" || substr.length() > 3)
+				throw ConfigError("faulty listen address", line);
+			octets_str.push_back(substr);
+			substr_start = period_pos + 1;
+			period_pos = address.find(".", substr_start);
 		}
-		catch (...)
-		{
+		std::string substr = address.substr(substr_start);
+		if (substr == "" || substr.length() > 3)
 			throw ConfigError("faulty listen address", line);
-		}
+		octets_str.push_back(substr);
+		std::vector<std::size_t> octets;
+		for (const std::string &s : octets_str)
+			octets.push_back(std::stoi(s));
+		verify_address_nums(octets, line);
+		listen_address.address = (octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3];
 	}
-	std::uint16_t port_bits;
+
+	listen_address.port = port_str_to_int(port, line);
 
 	return (listen_address);
 }
 
-static std::vector<ListenAddress> addAddresses(const Directive &d)
+static ListenAddress add_address(const Directive &d)
 {
 	if (d.args.size() == 0)
-	{
 		// TODO: match nginx error here
 		throw ConfigError("no arguments for \"listen\" directive", d.line);
-	}
+	else if (d.args.size() > 1)
+		// TODO: match nginx error here
+		throw ConfigError("more than one argument for \"listen\" directive", d.line);
 	else
 	{
-		std::vector<ListenAddress> addresses;
+		ListenAddress listen_address;
 
-		for (const std::string &a : d.args)
+		std::string address;
+		std::string port;
+
+		if (d.args[0].empty())
+			// TODO: match nginx error here
+			throw ConfigError("no host", d.line);
+
+		std::size_t colon_pos = d.args[0].find(":");
+
+		// no colon = no address specified = all addresses valid, as long as there is a port
+		// the argument is read as the port
+		if (colon_pos == std::string::npos)
+			listen_address = build_listenaddress("", d.args[0], d.line);
+		// if there is a colon ...
+		else
 		{
-			std::string address;
-			std::string port;
-
-			auto colon = a.find(":");
-			if (colon == std::string::npos)
-				port = a;
-			else
-			{
-				address = a.substr(0, colon);
-				port = a.substr(colon + 1, a.length() - colon);
-			}
+			// ... there has to be something in front of it
+			address = d.args[0].substr(0, colon_pos);
+			if (address == "")
+				// TODO: match nginx error here
+				throw ConfigError("no host", d.line);
+			port = d.args[0].substr(colon_pos + 1);
+			// port is still obligatory
 			if (port == "")
+				// TODO: match nginx error here
 				throw ConfigError("listen address has no port", d.line);
-			addresses.push_back(build_address(address, port, d.line));
+			listen_address = build_listenaddress(address, port, d.line);
 		}
+		return (listen_address);
 	}
 }
 
-ServerConfig ConfigBuilder::buildServer(std::vector<Directive> server_directives)
+ServerConfig ConfigBuilder::buildServer(const std::vector<Directive> &server_directives, std::size_t line)
 {
 	ServerConfig server_config;
 
 	for (const Directive &d : server_directives)
-	{
 		if (d.name == "listen")
-			server_config._listenAddresses = addAddresses(d);
-	}
+			server_config._listenAddresses.push_back(add_address(d));
+
+	if (server_config._listenAddresses.size() == 0)
+		// TODO: match nginx error here
+		throw ConfigError("no server address given", line);
+
+	return (server_config);
 }
 
 // INFO: nginx has a http {[...]} wrapper level around all server directives
@@ -128,8 +182,9 @@ Config ConfigBuilder::build()
 	Config config;
 
 	for (const Directive &d : _directives)
-		if (d.children.has_value())
-			config._servers.push_back(buildServer(d.children.value()));
+	// TODO: remnant line; children should be checked by verify_top_level, making this redundant; verification needed	
+	// if (d.children.has_value())
+			config._servers.push_back(buildServer(d.children.value(), d.line));
 
 	return (config);
 }
