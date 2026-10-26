@@ -1,5 +1,6 @@
 #include "ConfigBuilder.hpp"
 #include "ConfigError.hpp"
+#include "utils.hpp"
 
 #include <algorithm> // for std::count()
 #include <cctype> // for std::isdigit()
@@ -77,7 +78,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 {
 	ListenAddress listen_address;
 
-	if (address == "" || address == "*")
+	if (address.empty() || address.empty())
 		listen_address.address = 0;
 	else
 	{
@@ -89,14 +90,14 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 		{
 			std::size_t substr_n = period_pos - substr_start;
 			std::string substr = address.substr(substr_start, substr_n);
-			if (substr == "" || substr.length() > 3)
+			if (substr.empty() || substr.length() > 3)
 				throw ConfigError("faulty listen address", line);
 			octets_str.push_back(substr);
 			substr_start = period_pos + 1;
 			period_pos = address.find(".", substr_start);
 		}
 		std::string substr = address.substr(substr_start);
-		if (substr == "" || substr.length() > 3)
+		if (substr.empty() || substr.length() > 3)
 			throw ConfigError("faulty listen address", line);
 		octets_str.push_back(substr);
 		std::vector<std::size_t> octets;
@@ -111,7 +112,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 	return (listen_address);
 }
 
-static ListenAddress add_address(const Directive &d)
+static ListenAddress add_listen_address(const Directive &d)
 {
 	if (d.args.size() == 0)
 		// TODO: match nginx error here
@@ -141,12 +142,12 @@ static ListenAddress add_address(const Directive &d)
 		{
 			// ... there has to be something in front of it
 			address = d.args[0].substr(0, colon_pos);
-			if (address == "")
+			if (address.empty())
 				// TODO: match nginx error here
 				throw ConfigError("no host", d.line);
 			port = d.args[0].substr(colon_pos + 1);
 			// port is still obligatory
-			if (port == "")
+			if (port.empty())
 				// TODO: match nginx error here
 				throw ConfigError("listen address has no port", d.line);
 			listen_address = build_listenaddress(address, port, d.line);
@@ -155,13 +156,32 @@ static ListenAddress add_address(const Directive &d)
 	}
 }
 
+
+static std::vector<std::string> get_server_names(const Directive &d)
+{
+	if (d.args.size() == 0)
+		// TODO: match nginx error here
+		throw ConfigError("no arguments for \"server_name\" directive", d.line);
+	std::vector<std::string> server_names;
+	for (const std::string &arg : d.args)
+		server_names.push_back(tolower_string(arg));
+	return (server_names);
+}
+
 ServerConfig ConfigBuilder::buildServer(const std::vector<Directive> &server_directives, std::size_t line)
 {
 	ServerConfig server_config;
 
 	for (const Directive &d : server_directives)
+	{
 		if (d.name == "listen")
-			server_config._listenAddresses.push_back(add_address(d));
+			server_config._listenAddresses.push_back(add_listen_address(d));
+		else if (d.name == "server_name")
+		{
+			std::vector<std::string> server_names = get_server_names(d);
+			server_config._serverNames.insert(server_config._serverNames.end(), server_names.begin(), server_names.end());
+		}
+	}
 
 	if (server_config._listenAddresses.size() == 0)
 		// TODO: match nginx error here
@@ -182,9 +202,9 @@ Config ConfigBuilder::build()
 	Config config;
 
 	for (const Directive &d : _directives)
-	// TODO: remnant line; children should be checked by verify_top_level, making this redundant; verification needed	
-	// if (d.children.has_value())
-			config._servers.push_back(buildServer(d.children.value(), d.line));
+		// TODO: remnant line; children should be checked by verify_top_level, making this redundant; verification needed
+		// if (d.children.has_value())
+		config._servers.push_back(buildServer(d.children.value(), d.line));
 
 	return (config);
 }
