@@ -1,7 +1,7 @@
 #include "webserv.hpp"
 
-#include <stdexcept>
 #include <iostream>
+#include <stdexcept>
 
 int main(int argc, char **argv)
 {
@@ -9,15 +9,24 @@ int main(int argc, char **argv)
 	{
 		Config config = parse_config(argc, argv);
 		// DEBUG
-		std::vector<ListenAddress> testerino = config.listenAddresses();
-		// these bitshifts reverse operation from ConfigBuilder, so that 32bit value is split into 4 bytes (8 bits) for print in dotted notation
-		for (const ListenAddress &a : testerino)
-			std::cout 
-			<< ((a.address >> 24) & 255) << "." 
-			<< ((a.address >> 16) & 255) << "." 
-			<< ((a.address >> 8) & 255) << "." 
-			<< (a.address & 255) << ":" 
-			<< a.port << "\n";
+		const std::vector<std::string> hostnames = { "localhost", "api.localhost:8080", "API.LOCALHOST", "unknown", "" };
+		for (const ListenAddress &la : config.listenAddresses())
+		{
+			std::cout << "LOOKING FOR SERVERS FOR: " << ((la.address >> 24) & 255) << "." << ((la.address >> 16) & 255) << "."
+				<< ((la.address >> 8) & 255) << "." << (la.address & 255) << ":" << la.port << "\n=============\n";
+			for (const std::string &hn : hostnames)
+			{
+				const ServerConfig &sc = config.selectServer(la, hn);
+				if (sc.serverNames().size() != 0)
+
+					std::cout << "selected server for hostname \"" << hn << "\": " << sc.serverNames()[0] << "\n";
+				else
+					std::cout << "server without name found for \"" << hn << "\"\n";
+			}
+			std::cout << "\n";
+		}
+		std::cout << "DELIBERATE FAIL CASE\n=============\n";
+		config.selectServer({123,123}, "abc abc");
 		// DEBUG END
 	}
 	// catches all used exceptions, including ConfigError (inherits from std::exception via std::runtime_error)
