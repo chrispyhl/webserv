@@ -5,15 +5,17 @@ CXXFLAGS = -Werror -Wall -Wextra -std=c++17 $(addprefix -I, $(INC_DIRS))
 RM = rm -rf
 
 SRC_DIR = srcs
+UTIL_DIR = $(SRC_DIR)/utils
 OBJ_DIR = obj
 
 # one directory per module
 CONF_DIR = $(SRC_DIR)/config
 
 # every module's include folder; turned into -I flags in CXXFLAGS
-INC_DIRS =	$(SRC_DIR)/inc $(CONF_DIR)/inc 
+INC_DIRS =	$(SRC_DIR)/inc $(UTIL_DIR)/inc $(CONF_DIR)/inc 
 
 SRC =	$(SRC_DIR)/main.cpp \
+		$(UTIL_DIR)/utils.cpp \
 		$(CONF_DIR)/parse_config.cpp \
 		$(CONF_DIR)/Tokenizer.cpp \
 		$(CONF_DIR)/Token.cpp \
