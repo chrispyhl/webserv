@@ -1,7 +1,6 @@
 #include "Config.hpp"
 #include "utils.hpp"
 
-#include <algorithm> // for std::find()
 #include <cstddef>
 #include <stdexcept>
 
@@ -17,9 +16,8 @@ std::vector<ListenAddress> Config::listenAddresses() const
 	{
 		for (const ListenAddress &a : s.listenAddresses())
 		{
-			// std::find() works with the == operator to compare container elements with the given argument (here: a)
 			// the == operator is overloaded for ListenAddressess, comparing both address and port and only returning true if both match!
-			if (std::find(listen_addresses.begin(), listen_addresses.end(), a) == listen_addresses.end())
+			if (!vector_contains(listen_addresses, a))
 				listen_addresses.push_back(a);
 		}
 	}
@@ -45,14 +43,14 @@ const ServerConfig &Config::selectServer(const ListenAddress &listen_address, co
 	{
 		const std::vector<ListenAddress> &addresses = s.listenAddresses();
 		// no address match? look at next server
-		if (std::find(addresses.begin(), addresses.end(), listen_address) == addresses.end())
+		if (!vector_contains(addresses, listen_address))
 			continue;
 		// address match? save this server as default fallback (virtual host rule) if not set yet
 		if (!default_server)
 			default_server = &s;
 		const std::vector<std::string> &server_names = s.serverNames();
 		// name match! return this ServerConfig right now (not the default one!)
-		if (std::find(server_names.begin(), server_names.end(), name) != server_names.end())
+		if (vector_contains(server_names, name))
 			return (s);
 	}
 	if (!default_server)
