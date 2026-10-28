@@ -26,19 +26,38 @@ ConfigBuilder::ConfigBuilder(std::vector<Directive> directives) : _directives(di
 {
 }
 
+static void bad_directive_throw(const Directive &d)
+{
+	if (vector_contains(KNOWN_DIRECTIVES, d.name))
+		throw ConfigError("\"" + d.name + "\" directive is not allowed here", d.line);
+	else
+		throw ConfigError("unknown directive \"" + d.name + "\"", d.line);
+}
+
+static void duplicate_throw(const Directive &d)
+{
+	throw ConfigError("\"" + d.name + "\" directive is duplicate", d.line);
+}
+
+static void invalid_args_size_throw(const Directive &d)
+{
+	throw ConfigError("invalid number of arguments in \"" + d.name + "\" directive", d.line);
+}
+
+static void check_for_illegal_block(const Directive &d)
+{
+	if (d.children.has_value())
+		throw ConfigError("directive \"" + d.name + "\" is not terminated by \";\"", d.line);
+}
+
 static void verify_top_level(const std::vector<Directive> &directives)
 {
 	for (const Directive &d : directives)
 	{
 		if (d.name != "server")
-		{
-			if (vector_contains(KNOWN_DIRECTIVES, d.name))
-				throw ConfigError("\"" + d.name + "\" directive is not allowed here", d.line);
-			else
-				throw ConfigError("unknown directive \"" + d.name + "\"", d.line);
-		}
+			bad_directive_throw(d);
 		if (d.args.size() != 0)
-			throw ConfigError("invalid number of arguments in \"server\" directive", d.line);
+			invalid_args_size_throw(d);
 		if (!d.children.has_value())
 			throw ConfigError("directive \"server\" has no opening \"{\"", d.line);
 	}
@@ -60,16 +79,19 @@ static void verify_address_nums(const std::vector<std::size_t> &address_nums, st
 			throw ConfigError("faulty listen address", line);
 }
 
-static int port_str_to_int(const std::string &port, std::size_t line)
+static std::int16_t port_str_to_int16(const std::string &port, std::size_t line)
 {
 	for (char c : port)
 		if (!isdigit(static_cast<unsigned char>(c)))
+			// TODO: match nginx error here
 			throw ConfigError("faulty listen address port", line);
 	// 65535 is the max value of an unsigned 16bit integer
 	if (port.length() > 5)
+		// TODO: match nginx error here
 		throw ConfigError("faulty listen address port", line);
 	int port_int = stoi(port);
 	if (port_int > 65535 || port_int == 0)
+		// TODO: match nginx error here
 		throw ConfigError("faulty listen address port", line);
 	return (port_int);
 }
@@ -108,57 +130,51 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 		listen_address.address = (octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3];
 	}
 
-	listen_address.port = port_str_to_int(port, line);
+	listen_address.port = port_str_to_int16(port, line);
 
 	return (listen_address);
 }
 
 static ListenAddress get_listen_address(const Directive &d)
 {
-	if (d.args.size() == 0)
-		// TODO: match nginx error here
-		throw ConfigError("no arguments for \"listen\" directive", d.line);
-	else if (d.args.size() > 1)
-		// TODO: match nginx error here
-		throw ConfigError("more than one argument for \"listen\" directive", d.line);
+	check_for_illegal_block(d);
+	if (d.args.size() == 0 || d.args.size() > 1)
+		invalid_args_size_throw(d);
+
+	ListenAddress listen_address;
+
+	std::string address;
+	std::string port;
+
+	if (d.args[0].empty())
+		throw ConfigError("no host in \"\" of the \"listen\" directive", d.line);
+	std::size_t colon_pos = d.args[0].find(":");
+
+	// no colon = no address specified = all addresses valid, as long as there is a port
+	// the argument is read as the port
+	if (colon_pos == std::string::npos)
+		listen_address = build_listenaddress("", d.args[0], d.line);
+	// if there is a colon ...
 	else
 	{
-		ListenAddress listen_address;
-
-		std::string address;
-		std::string port;
-
-		if (d.args[0].empty())
+		// ... there has to be something in front of it
+		address = d.args[0].substr(0, colon_pos);
+		if (address.empty())
 			// TODO: match nginx error here
 			throw ConfigError("no host", d.line);
-
-		std::size_t colon_pos = d.args[0].find(":");
-
-		// no colon = no address specified = all addresses valid, as long as there is a port
-		// the argument is read as the port
-		if (colon_pos == std::string::npos)
-			listen_address = build_listenaddress("", d.args[0], d.line);
-		// if there is a colon ...
-		else
-		{
-			// ... there has to be something in front of it
-			address = d.args[0].substr(0, colon_pos);
-			if (address.empty())
-				// TODO: match nginx error here
-				throw ConfigError("no host", d.line);
-			port = d.args[0].substr(colon_pos + 1);
-			// port is still obligatory
-			if (port.empty())
-				// TODO: match nginx error here
-				throw ConfigError("listen address has no port", d.line);
-			listen_address = build_listenaddress(address, port, d.line);
-		}
-		return (listen_address);
+		port = d.args[0].substr(colon_pos + 1);
+		// port is still obligatory
+		if (port.empty())
+			// TODO: match nginx error here
+			throw ConfigError("listen address has no port", d.line);
+		listen_address = build_listenaddress(address, port, d.line);
 	}
+	return (listen_address);
 }
 
 static std::vector<std::string> get_server_names(const Directive &d)
 {
+	check_for_illegal_block(d);
 	if (d.args.size() == 0)
 		// TODO: match nginx error here
 		throw ConfigError("no arguments for \"server_name\" directive", d.line);
@@ -195,24 +211,114 @@ void ConfigBuilder::warn_about_duplicates(const Config &config) const
 	}
 }
 
-ServerConfig ConfigBuilder::buildServer(const std::vector<Directive> &server_directives, std::size_t line)
+static std::string get_root(const Directive &d)
+{
+	check_for_illegal_block(d);
+	if (d.args.size() != 1)
+		invalid_args_size_throw(d);
+	return (d.args[0]);
+}
+
+static std::vector<std::string> get_index_files(const Directive &d)
+{
+	check_for_illegal_block(d);
+	if (d.args.size() == 0)
+		invalid_args_size_throw(d);
+	for (const std::string &s : d.args)
+		if (s.empty())
+			throw ConfigError("index \"\" in \"index\" directive is invalid", d.line);
+	return (d.args);
+}
+
+static bool get_auto_index(const Directive &d)
+{
+	check_for_illegal_block(d);
+	if (d.args.size() != 1)
+		invalid_args_size_throw(d);
+	std::string arg = tolower_string(d.args[0]);
+	if (arg == "on")
+		return (true);
+	else if (arg == "off")
+		return (false);
+	else
+		throw ConfigError("invalid value \"" + d.args[0] + "\" in \"autoindex\" directive, it must be \"on\" or \"off\"", d.line);
+}
+
+// static std::size_t get_max_body_size(const Directive &d)
+// {
+// 	if (d.args.size() != 1)
+// 		invalid_args_size_throw(d);
+
+// 	std::size_t max_size = std::stoi(d.args[0]);
+
+// 	return (std::stoi(d.args[0]));
+// }
+
+ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 {
 	ServerConfig server_config;
 
-	for (const Directive &d : server_directives)
+	// locations need to be built last since directives that might function as default server values for locations also apply retroactively
+	std::vector<Directive> location_directives;
+
+	ServerDefaults defaults;
+
+	for (const Directive &d : server_block.children.value())
 	{
-		if (d.name == "listen")
+		// LOCATION HANDLING
+		if (d.name == "location")
+		{
+			if (!d.children.has_value())
+				throw ConfigError("directive \"location\" has no opening \"{\"", d.line);
+			location_directives.push_back(d);
+		}
+		// LISTEN ADDRESS HANDLING
+		else if (d.name == "listen")
 			server_config._listenAddresses.push_back(get_listen_address(d));
+		// SERVER NAME HANDLING
 		else if (d.name == "server_name")
 		{
 			std::vector<std::string> server_names = get_server_names(d);
 			server_config._serverNames.insert(server_config._serverNames.end(), server_names.begin(), server_names.end());
 		}
+		else if (d.name == "root")
+		{
+			std::string root = get_root(d);
+			if (defaults.root.has_value())
+				duplicate_throw(d);
+			defaults.root = root;
+		}
+		else if (d.name == "index")
+		{
+			std::vector<std::string> index_files = get_index_files(d);
+			// multiple occurances of "index" in a server block are allowed
+			// can't .insert() on an optional without value
+			if (!defaults.index_files.has_value())
+				defaults.index_files = index_files;
+			else
+				defaults.index_files->insert(defaults.index_files->end(), index_files.begin(), index_files.end());
+		}
+		else if (d.name == "autoindex")
+		{
+			bool auto_index = get_auto_index(d);
+			if (defaults.auto_index.has_value())
+				duplicate_throw(d);
+			defaults.auto_index = auto_index;
+		}
+		// else if (d.name == "client_max_body_size")
+		// {
+		// 	if (defaults.max_body_size.has_value())
+		// 		duplicate_throw(d);
+		// 	defaults.max_body_size = get_max_body_size(d);
+		// }
+		// FALLTHROUGH HANDLING (no valid directive for this scope!)
+		else
+			bad_directive_throw(d);
 	}
 
 	if (server_config._listenAddresses.size() == 0)
 		// TODO: match nginx error here
-		throw ConfigError("no server address given", line);
+		throw ConfigError("no server address given", server_block.line);
 
 	return (server_config);
 }
@@ -229,9 +335,7 @@ Config ConfigBuilder::build()
 	Config config;
 
 	for (const Directive &d : _directives)
-		// TODO: remnant line; children should be checked by verify_top_level, making this redundant; verification needed
-		// if (d.children.has_value())
-		config._servers.push_back(buildServer(d.children.value(), d.line));
+		config._servers.push_back(buildServer(d));
 
 	warn_about_duplicates(config);
 
