@@ -4,6 +4,7 @@
 
 #include <algorithm> // for std::count()
 #include <cctype> // for std::isdigit()
+#include <iostream>
 
 const std::vector<std::string> KNOWN_DIRECTIVES = {
 	"server",
@@ -31,7 +32,7 @@ static void verify_top_level(const std::vector<Directive> &directives)
 	{
 		if (d.name != "server")
 		{
-			if (std::find(KNOWN_DIRECTIVES.begin(), KNOWN_DIRECTIVES.end(), d.name) != KNOWN_DIRECTIVES.end())
+			if (vector_contains(KNOWN_DIRECTIVES, d.name))
 				throw ConfigError("\"" + d.name + "\" directive is not allowed here", d.line);
 			else
 				throw ConfigError("unknown directive \"" + d.name + "\"", d.line);
@@ -112,7 +113,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 	return (listen_address);
 }
 
-static ListenAddress add_listen_address(const Directive &d)
+static ListenAddress get_listen_address(const Directive &d)
 {
 	if (d.args.size() == 0)
 		// TODO: match nginx error here
@@ -156,7 +157,6 @@ static ListenAddress add_listen_address(const Directive &d)
 	}
 }
 
-
 static std::vector<std::string> get_server_names(const Directive &d)
 {
 	if (d.args.size() == 0)
@@ -164,8 +164,35 @@ static std::vector<std::string> get_server_names(const Directive &d)
 		throw ConfigError("no arguments for \"server_name\" directive", d.line);
 	std::vector<std::string> server_names;
 	for (const std::string &arg : d.args)
-		server_names.push_back(tolower_string(arg));
+		if (!vector_contains(server_names, arg))
+			server_names.push_back(tolower_string(arg));
 	return (server_names);
+}
+
+void ConfigBuilder::warn_about_duplicates(const Config &config) const
+{
+	// looking through servers
+	for (auto server1_it = config._servers.begin(); server1_it != config._servers.end(); server1_it++)
+	{
+		for (auto server2_it = server1_it + 1; server2_it != config._servers.end(); server2_it++)
+		{
+			// looking through addresses
+			for (const ListenAddress &la : server2_it->_listenAddresses)
+			{
+				// server1 doesn't listen on this address = no competition here
+				if (!vector_contains(server1_it->_listenAddresses, la))
+					continue;
+				// looking through server names
+				for (const std::string &sn : server2_it->_serverNames)
+				{
+					// server1 and server 2 listen to the same address, but have completely different names = no competition here
+					if (!vector_contains(server1_it->_serverNames, sn))
+						continue;
+					std::cerr << "warn: conflicting server name \"" << sn << "\" on " << listen_address_to_string(la) << ", ignored\n";
+				}
+			}
+		}
+	}
 }
 
 ServerConfig ConfigBuilder::buildServer(const std::vector<Directive> &server_directives, std::size_t line)
@@ -175,7 +202,7 @@ ServerConfig ConfigBuilder::buildServer(const std::vector<Directive> &server_dir
 	for (const Directive &d : server_directives)
 	{
 		if (d.name == "listen")
-			server_config._listenAddresses.push_back(add_listen_address(d));
+			server_config._listenAddresses.push_back(get_listen_address(d));
 		else if (d.name == "server_name")
 		{
 			std::vector<std::string> server_names = get_server_names(d);
@@ -205,6 +232,8 @@ Config ConfigBuilder::build()
 		// TODO: remnant line; children should be checked by verify_top_level, making this redundant; verification needed
 		// if (d.children.has_value())
 		config._servers.push_back(buildServer(d.children.value(), d.line));
+
+	warn_about_duplicates(config);
 
 	return (config);
 }
