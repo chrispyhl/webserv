@@ -12,8 +12,7 @@ int main(int argc, char **argv)
 		const std::vector<std::string> hostnames = { "localhost", "api.localhost:8080", "API.LOCALHOST", "unknown", "" };
 		for (const ListenAddress &la : config.listenAddresses())
 		{
-			std::cout << "LOOKING FOR SERVERS FOR: " << ((la.address >> 24) & 255) << "." << ((la.address >> 16) & 255) << "."
-				<< ((la.address >> 8) & 255) << "." << (la.address & 255) << ":" << la.port << "\n=============\n";
+			std::cout << "LOOKING FOR SERVERS FOR: " << listen_address_to_string(la) << "\n=============\n";
 			for (const std::string &hn : hostnames)
 			{
 				const ServerConfig &sc = config.selectServer(la, hn);

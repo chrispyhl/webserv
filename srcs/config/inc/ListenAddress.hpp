@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 struct ListenAddress
 {
@@ -10,3 +11,6 @@ struct ListenAddress
 };
 
 bool operator==(const ListenAddress &a, const ListenAddress &b);
+std::string address_to_string(const ListenAddress &la);
+std::string port_to_string(const ListenAddress &la);
+std::string listen_address_to_string(const ListenAddress &la);
