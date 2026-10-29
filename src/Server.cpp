@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/29 14:15:23 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/29 15:18:02 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,20 +15,23 @@
 Server::Server(int port){
 	_listener.listen_on(port);
 	_fd = _listener.get_fd();
-}
-
-
-void	Server::poll_loop(void){
-	std::vector<pollfd>	poll_fds;
 
 	pollfd	server_pollfd{};
 	server_pollfd.fd = _fd;
 	server_pollfd.events = POLLIN;
-
 	poll_fds.push_back(server_pollfd);
+}
+
+
+void	Server::poll_loop(void){
+
 	while (true){
 		int	ret = poll(poll_fds.data(), poll_fds.size(), -1);
 		if (ret < 0){
+			if (errno == EINTR){
+				std::cout << YELLOW << "Server interupted by signal. Shutting down..." << RESET << std::endl;
+				break;
+			}
 			std::cerr << RED << "poll failed!" << RESET << std::endl;
 			throw std::runtime_error("poll failed!");
 		}

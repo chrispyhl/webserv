@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 15:12:05 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/28 14:29:39 by marvin           ###   ########.fr       */
+/*   Updated: 2026/10/29 15:18:17 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,11 +14,15 @@
 #include "Socket.hpp"
 #include "Server.hpp"
 
+void	handle_sigint(int sig){
+	(void)sig;
+}
+
 int main(){
+	signal(SIGINT, handle_sigint);
+	signal(SIGQUIT, handle_sigint);
 	try{
 		Server	server(8080);
-
-		std::cout << BLUE << 8080 << RESET << std::endl;
 		
 		server.poll_loop();
 	}

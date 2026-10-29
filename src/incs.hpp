@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   incs.hpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 14:28:56 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/20 17:34:36 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/29 15:13:24 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,9 @@
 #include <vector>
 #include <map>
 #include <stdexcept>
+
+#include <csignal>
+#include <cerrno>
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"

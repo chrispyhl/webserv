@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Socket.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 14:39:13 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/29 14:13:24 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/29 15:18:38 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,22 +61,22 @@ void	Socket::listen_on(int port){
 		throw std::runtime_error("Bind failed!");
 	}
 
-	// 4. Switch to listen-mode (Queue for max. 3 Connections)
+	// 4. Switch to listen-mode (Queue for max. X Connections)
 	if (listen(_fd, 50) < 0){
 		std::cerr << RED << "Listen failed!" << RESET << std::endl;
 		throw std::runtime_error("Listen failed!");
 	}
-	std::cout << YELLOW << "Server a waiting on port:" << RESET << std::endl;
+	std::cout << YELLOW << "Server a waiting on port: " << ORANGE << port << RESET << std::endl;
 }
 
 void	Socket::set_nonblocking(void){
 	int	ret;
-	int	flags;
-	flags = fcntl(_fd, F_GETFL, 0);
-	if (flags < 0){
-		std::cerr << RED << "Flag retrieval failed!" << RESET << std::endl;
-		throw std::runtime_error("Flag retrieval failed!");
-	}
+	// int	flags;
+	// flags = fcntl(_fd, F_GETFL, 0);
+	// if (flags < 0){
+	// 	std::cerr << RED << "Flag retrieval failed!" << RESET << std::endl;
+	// 	throw std::runtime_error("Flag retrieval failed!");
+	// }
 	ret = fcntl(_fd, F_SETFL, O_NONBLOCK);
 	if (ret < 0){
 		std::cerr << RED << "Non-blocking failed!" << RESET << std::endl;
