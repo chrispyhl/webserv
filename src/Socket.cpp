@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 14:39:13 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/20 17:28:39 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/29 14:13:24 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,8 +34,6 @@ Socket::Socket(Socket &&other) noexcept {
 }
 
 Socket::~Socket(){
-	std::cout << ORANGE << CONSTRU << "Destructor called" << RESET << std::endl;
-	std::cout << MAGENTA << _fd << RESET << std::endl;
 	if (_fd >= 0)
 		close(_fd);
 }
@@ -45,13 +43,12 @@ int	Socket::get_fd(){
 }
 
 void	Socket::listen_on(int port){
-		// Option: Make port reusable to avoid "Address already in use"- fail
+	// Option: Make port reusable to avoid "Address already in use"- fail
 	int	opt = 1;
 	if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0){
 		std::cerr << RED << "setsocket failed!" << RESET << std::endl;
 		throw std::runtime_error("setsocket failed!");
 	}
-
 	// 2. Define Address
 	sockaddr_in address{};
 	address.sin_family = AF_INET;
@@ -65,7 +62,7 @@ void	Socket::listen_on(int port){
 	}
 
 	// 4. Switch to listen-mode (Queue for max. 3 Connections)
-	if (listen(_fd, 3) < 0){
+	if (listen(_fd, 50) < 0){
 		std::cerr << RED << "Listen failed!" << RESET << std::endl;
 		throw std::runtime_error("Listen failed!");
 	}
@@ -74,6 +71,12 @@ void	Socket::listen_on(int port){
 
 void	Socket::set_nonblocking(void){
 	int	ret;
+	int	flags;
+	flags = fcntl(_fd, F_GETFL, 0);
+	if (flags < 0){
+		std::cerr << RED << "Flag retrieval failed!" << RESET << std::endl;
+		throw std::runtime_error("Flag retrieval failed!");
+	}
 	ret = fcntl(_fd, F_SETFL, O_NONBLOCK);
 	if (ret < 0){
 		std::cerr << RED << "Non-blocking failed!" << RESET << std::endl;
