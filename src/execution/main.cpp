@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 15:12:05 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/29 15:18:17 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/10/29 15:48:51 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,10 @@ void	handle_sigint(int sig){
 int main(){
 	signal(SIGINT, handle_sigint);
 	signal(SIGQUIT, handle_sigint);
+	signal(SIGPIPE, SIG_IGN);
 	try{
 		Server	server(8080);
-		
+
 		server.poll_loop();
 	}
 	catch (const std::exception &e){
