@@ -4,7 +4,9 @@
 
 #include <algorithm> // for std::count()
 #include <cctype> // for std::isdigit()
+#include <charconv>
 #include <iostream>
+#include <limits>
 
 const std::vector<std::string> KNOWN_DIRECTIVES = {
 	"server",
@@ -81,10 +83,8 @@ static void verify_address_nums(const std::vector<std::size_t> &address_nums, st
 
 static std::int16_t port_str_to_int16(const std::string &port, std::size_t line)
 {
-	for (char c : port)
-		if (!isdigit(static_cast<unsigned char>(c)))
-			// TODO: match nginx error here
-			throw ConfigError("faulty listen address port", line);
+	if (!isdigit_string(port))
+		throw ConfigError("faulty listen address port", line);
 	// 65535 is the max value of an unsigned 16bit integer
 	if (port.length() > 5)
 		// TODO: match nginx error here
@@ -244,15 +244,76 @@ static bool get_auto_index(const Directive &d)
 		throw ConfigError("invalid value \"" + d.args[0] + "\" in \"autoindex\" directive, it must be \"on\" or \"off\"", d.line);
 }
 
-// static std::size_t get_max_body_size(const Directive &d)
-// {
-// 	if (d.args.size() != 1)
-// 		invalid_args_size_throw(d);
+static std::size_t get_max_body_size(const Directive &d)
+{
+	check_for_illegal_block(d);
+	if (d.args.size() != 1)
+		invalid_args_size_throw(d);
 
-// 	std::size_t max_size = std::stoi(d.args[0]);
+	const std::string &str = d.args[0];
+	if (str.empty())
+		throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
 
-// 	return (std::stoi(d.args[0]));
-// }
+	const std::string allowed_chars = "kKmMgG";
+	std::optional<char> suffix;
+
+	for (auto it = str.begin(); it != str.end(); it++)
+	{
+		if (!std::isdigit(static_cast<unsigned char>(*it)))
+		{
+			if ((it + 1) == str.end() && allowed_chars.find(*it) != std::string::npos)
+				suffix = *it;
+			else
+				throw ConfigError("\"client_max_body_size\" directive invalid value", d.line); // unallowed char was found
+		}
+	}
+
+	std::size_t max_body_size;
+	// std::from_chars returns a custom feedback struct that contains an error code object and a pointer to the spot one past the last processed character
+	std::from_chars_result from_chars_result;
+	// .data() from std::string returns a pointer to the first character
+	const char *digits_end;
+	if (!suffix.has_value())
+		digits_end = str.data() + str.size();
+	else
+		digits_end = str.data() + str.size() - 1;
+	from_chars_result = std::from_chars(str.data(), digits_end, max_body_size);
+	// only valid result: error code object is blank ({}) and the pointer points at the end of the digits; anything else = error
+	if (from_chars_result.ec != std::errc { } || (from_chars_result.ptr != digits_end))
+		throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
+
+	if (!suffix.has_value())
+		return (max_body_size); // no suffix = just return base value
+
+	std::size_t limit = std::numeric_limits<size_t>::max();
+	switch (suffix.value())
+	{
+		case ('k'):
+		case ('K'):
+		{
+			if (max_body_size > (limit / 1024))
+				break;
+			return (max_body_size * 1024);
+		}
+		case ('m'):
+		case ('M'):
+		{
+			if (max_body_size > (limit / (1024 * 1024)))
+				break;
+			return (max_body_size * 1024 * 1024);
+		}
+		case ('g'):
+		case ('G'):
+		{
+			if (max_body_size > (limit / (1024 * 1024 * 1024)))
+				break;
+			return (max_body_size * 1024 * 1024 * 1024);
+		}
+		default:
+			break;
+	}
+	throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
+}
 
 ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 {
@@ -305,12 +366,13 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 				duplicate_throw(d);
 			defaults.auto_index = auto_index;
 		}
-		// else if (d.name == "client_max_body_size")
-		// {
-		// 	if (defaults.max_body_size.has_value())
-		// 		duplicate_throw(d);
-		// 	defaults.max_body_size = get_max_body_size(d);
-		// }
+		else if (d.name == "client_max_body_size")
+		{
+			std::size_t max_body_size = get_max_body_size(d);
+			if (defaults.max_body_size.has_value())
+				duplicate_throw(d);
+			defaults.max_body_size = max_body_size;
+		}
 		// FALLTHROUGH HANDLING (no valid directive for this scope!)
 		else
 			bad_directive_throw(d);

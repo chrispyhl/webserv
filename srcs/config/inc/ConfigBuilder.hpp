@@ -12,12 +12,13 @@
 class ConfigBuilder
 {
 	public:
+		// constructor
 		ConfigBuilder(std::vector<Directive> directives);
 		Config build();
 
 	private:
-		// constructor
 		ServerConfig buildServer(const Directive &server_block);
+
 		// struct for temp storage of location elements
 		struct ServerDefaults
 		{
@@ -27,9 +28,9 @@ class ConfigBuilder
 				std::optional<bool> auto_index;
 				std::optional<std::size_t> max_body_size;
 		};
+
 		// helper that profits from member access
 		void warn_about_duplicates(const Config &config) const;
 		// members
 		std::vector<Directive> _directives;
-
 };
