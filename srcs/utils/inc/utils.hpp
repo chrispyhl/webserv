@@ -4,6 +4,7 @@
 #include <vector>
 
 std::string tolower_string(const std::string &str);
+bool isdigit_string(const std::string &str);
 
 template <typename T>
 bool vector_contains(const std::vector<T> &vector, const T &value);
