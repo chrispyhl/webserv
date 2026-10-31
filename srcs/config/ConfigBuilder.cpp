@@ -81,7 +81,7 @@ static void verify_address_nums(const std::vector<std::size_t> &address_nums, st
 			throw ConfigError("faulty listen address", line);
 }
 
-static std::int16_t port_str_to_int16(const std::string &port, std::size_t line)
+static std::uint16_t port_str_to_uint16(const std::string &port, std::size_t line)
 {
 	if (!isdigit_string(port))
 		throw ConfigError("faulty listen address port", line);
@@ -101,7 +101,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 {
 	ListenAddress listen_address;
 
-	if (address.empty() || address.empty())
+	if (address.empty())
 		listen_address.address = 0;
 	else
 	{
@@ -130,7 +130,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 		listen_address.address = (octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3];
 	}
 
-	listen_address.port = port_str_to_int16(port, line);
+	listen_address.port = port_str_to_uint16(port, line);
 
 	return (listen_address);
 }
@@ -180,8 +180,11 @@ static std::vector<std::string> get_server_names(const Directive &d)
 		throw ConfigError("no arguments for \"server_name\" directive", d.line);
 	std::vector<std::string> server_names;
 	for (const std::string &arg : d.args)
-		if (!vector_contains(server_names, arg))
-			server_names.push_back(tolower_string(arg));
+	{
+		std::string lower_server_name = tolower_string(arg);
+		if (!vector_contains(server_names, lower_server_name))
+			server_names.push_back(lower_server_name);
+	}
 	return (server_names);
 }
 
@@ -315,6 +318,37 @@ static std::size_t get_max_body_size(const Directive &d)
 	throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
 }
 
+static std::map<std::size_t, std::string> get_error_pages(const Directive &d)
+{
+	if (d.args.size() < 2)
+		invalid_args_size_throw(d);
+	std::vector<std::size_t> codes;
+	auto it = d.args.begin();
+	for (; it != d.args.end(); it++)
+	{
+		if (isdigit_string(*it))
+			codes.push_back(stoi(*it));
+		else
+			break;
+	}
+	if (codes.empty())
+		throw ConfigError("invalid value \"" + d.args[0] + "\"", d.line);
+	if (it + 1 != d.args.end())
+		throw ConfigError("invalid value \"" + *it + "\"", d.line);
+	std::string uri = *it;
+	std::map<std::size_t, std::string> error_pages;
+	for (size_t c : codes)
+	{
+		if (c < 300 || c > 599)
+			throw ConfigError("value \"" + std::to_string(c) + "\" must be between 300 and 599", d.line);
+		if (c == 499)
+			throw ConfigError("invalid value \"499\"", d.line);
+		error_pages.insert({c, uri});
+	}
+	// TODO: implement nginx's URI guidelines
+	return (error_pages);
+}
+
 ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 {
 	ServerConfig server_config;
@@ -372,6 +406,16 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 			if (defaults.max_body_size.has_value())
 				duplicate_throw(d);
 			defaults.max_body_size = max_body_size;
+		}
+		else if (d.name == "error_page")
+		{
+			std::map<std::size_t, std::string> error_pages = get_error_pages(d);
+			for (const auto &p : error_pages)
+			{
+				// nginx only uses the first entry in case of duplicate error codes
+				if (server_config._errorPages.find(p.first) == server_config._errorPages.end())
+					server_config._errorPages.insert(p);
+			}
 		}
 		// FALLTHROUGH HANDLING (no valid directive for this scope!)
 		else
