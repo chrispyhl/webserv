@@ -4,7 +4,6 @@
 
 #include <algorithm> // for std::count()
 #include <cctype> // for std::isdigit()
-#include <charconv>
 #include <iostream>
 #include <limits>
 
@@ -271,19 +270,22 @@ static std::size_t get_max_body_size(const Directive &d)
 		}
 	}
 
-	std::size_t max_body_size;
-	// std::from_chars returns a custom feedback struct that contains an error code object and a pointer to the spot one past the last processed character
-	std::from_chars_result from_chars_result;
-	// .data() from std::string returns a pointer to the first character
-	const char *digits_end;
+	std::size_t digits_length;
 	if (!suffix.has_value())
-		digits_end = str.data() + str.size();
+		digits_length = str.size();
 	else
-		digits_end = str.data() + str.size() - 1;
-	from_chars_result = std::from_chars(str.data(), digits_end, max_body_size);
-	// only valid result: error code object is blank ({}) and the pointer points at the end of the digits; anything else = error
-	if (from_chars_result.ec != std::errc { } || (from_chars_result.ptr != digits_end))
+		digits_length = str.size() - 1;
+
+	std::size_t max_body_size;
+
+	try
+	{
+		max_body_size = str_to_size_t(str.substr(0, digits_length));
+	}
+	catch (const std::invalid_argument &)
+	{
 		throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
+	}
 
 	if (!suffix.has_value())
 		return (max_body_size); // no suffix = just return base value
@@ -327,7 +329,16 @@ static std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 	for (; it != d.args.end(); it++)
 	{
 		if (isdigit_string(*it))
-			codes.push_back(stoi(*it));
+		{
+			try
+			{
+				codes.push_back(str_to_size_t(*it));
+			}
+			catch (const std::exception &e)
+			{
+				throw ConfigError("invalid value \"" + *it + "\"", d.line);
+			}
+		}
 		else
 			break;
 	}
