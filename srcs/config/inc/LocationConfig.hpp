@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Redirect.hpp"
+#include "Return.hpp"
 
 #include <cstddef>
 #include <map>
@@ -23,7 +23,7 @@ class LocationConfig
 		bool autoIndex() const;
 		std::size_t maxBodySize() const;
 		const std::map<std::size_t, std::string> &errorPages() const;
-		const std::optional<Redirect> &redirect() const;
+		const std::optional<Return> &returnDirective() const;
 		const std::set<std::string> &allowedMethods() const;
 		const std::optional<std::string> &uploadDirectory() const;
 		const std::map<std::string, std::string> &cgiHandlers() const;
@@ -55,6 +55,6 @@ class LocationConfig
 		// these two are shared by ServerConfig and might be imported from there if no insert by Location
 		// pairs of status code and page URL
 		std::map<std::size_t, std::string> _errorPages;
-		// code + target site OR no redirect
-		std::optional<Redirect> _redirect;
+		// code + target OR no return directive
+		std::optional<Return> _returnDirective;
 };

@@ -3,10 +3,10 @@
 #include <cstddef>
 #include <string>
 
-struct Redirect
+struct Return
 {
 	// status code
 	std::size_t code;
-	// URL to redirect to
+	// URL to redirect to OR an response text
 	std::string target;
 };

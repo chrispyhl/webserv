@@ -20,9 +20,9 @@ const std::vector<LocationConfig> &ServerConfig::locations() const
 	return (_locations);
 }
 
-const std::optional<Redirect> &ServerConfig::redirect() const
+const std::optional<Return> &ServerConfig::returnDirective() const
 {
-	return (_redirect);
+	return (_returnDirective);
 }
 
 const std::map<std::size_t, std::string> &ServerConfig::errorPages() const

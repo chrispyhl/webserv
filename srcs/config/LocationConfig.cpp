@@ -50,9 +50,9 @@ const std::map<std::size_t, std::string> &LocationConfig::errorPages() const
 	return (_errorPages);
 }
 
-const std::optional<Redirect> &LocationConfig::redirect() const
+const std::optional<Return> &LocationConfig::returnDirective() const
 {
-	return (_redirect);
+	return (_returnDirective);
 }
 
 const std::set<std::string> &LocationConfig::allowedMethods() const
