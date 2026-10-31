@@ -5,6 +5,7 @@
 #include "LocationConfig.hpp"
 #include "ServerConfig.hpp"
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>

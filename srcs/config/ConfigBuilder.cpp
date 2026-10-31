@@ -69,7 +69,7 @@ static void verify_address_str(const std::string &address, std::size_t line)
 	if (std::count(address.begin(), address.end(), '.') != 3)
 		throw ConfigError("faulty listen address", line);
 	for (char c : address)
-		if (c != '.' && !isdigit(static_cast<unsigned char>(c)))
+		if (c != '.' && !std::isdigit(static_cast<unsigned char>(c)))
 			throw ConfigError("faulty listen address", line);
 }
 
@@ -88,7 +88,7 @@ static std::uint16_t port_str_to_uint16(const std::string &port, std::size_t lin
 	if (port.length() > 5)
 		// TODO: match nginx error here
 		throw ConfigError("faulty listen address port", line);
-	int port_int = stoi(port);
+	int port_int = std::stoi(port);
 	if (port_int > 65535 || port_int == 0)
 		// TODO: match nginx error here
 		throw ConfigError("faulty listen address port", line);
@@ -322,6 +322,7 @@ static std::size_t get_max_body_size(const Directive &d)
 
 static std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 {
+	check_for_illegal_block(d);
 	if (d.args.size() < 2)
 		invalid_args_size_throw(d);
 	std::vector<std::size_t> codes;
@@ -334,7 +335,7 @@ static std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 			{
 				codes.push_back(str_to_size_t(*it));
 			}
-			catch (const std::exception &e)
+			catch (const std::exception &)
 			{
 				throw ConfigError("invalid value \"" + *it + "\"", d.line);
 			}
@@ -354,10 +355,72 @@ static std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 			throw ConfigError("value \"" + std::to_string(c) + "\" must be between 300 and 599", d.line);
 		if (c == 499)
 			throw ConfigError("invalid value \"499\"", d.line);
-		error_pages.insert({c, uri});
+		error_pages.insert({ c, uri });
 	}
 	// TODO: implement nginx's URI guidelines
 	return (error_pages);
+}
+
+static std::size_t get_return_code(const Directive &d)
+{
+	std::string str = d.args[0];
+	std::size_t code;
+	try
+	{
+		code = str_to_size_t(str);
+		// code needs to be between (and including) 0 and 999
+		// can't be negative due to isdigit_string() check before, so only 999 needs guarding
+		if (code > 999)
+			throw ConfigError("invalid return code \"" + str + "\"", d.line);
+	}
+	catch (const std::exception &)
+	{
+		throw ConfigError("invalid return code \"" + str + "\"", d.line);
+	}
+	return (code);
+}
+
+static Return get_return(const Directive &d)
+{
+	check_for_illegal_block(d);
+	if (d.args.size() < 1 || d.args.size() > 2)
+		invalid_args_size_throw(d);
+
+	Return result;
+
+	// one argument is only legal if its a code OR a target that starts with "http://" or "https://" (has default code 302)
+	if (d.args.size() == 1)
+	{
+		if (isdigit_string(d.args[0]))
+		{
+			std::size_t code = get_return_code(d);
+			result.code = code;
+			result.target = "";
+		}
+		else
+		{
+			std::string target = d.args[0];
+			if (target.substr(0, 7) == "http://" || target.substr(0, 8) == "https://")
+			{
+				result.code = 302;
+				result.target = target;
+			}
+			else
+				throw ConfigError("invalid return code \"" + target + "\"", d.line);
+		}
+	}
+	// 2 arg scenario: first must be code, second is target
+	else if (isdigit_string(d.args[0]))
+	{
+		std::size_t code = get_return_code(d);
+		std::string target = d.args[1];
+		result.code = code;
+		result.target = target;
+	}
+	else
+		throw ConfigError("invalid return code \"" + d.args[0] + "\"", d.line);
+
+	return (result);
 }
 
 ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
@@ -397,7 +460,7 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		else if (d.name == "index")
 		{
 			std::vector<std::string> index_files = get_index_files(d);
-			// multiple occurances of "index" in a server block are allowed
+			// multiple occurences of "index" in a server block are allowed
 			// can't .insert() on an optional without value
 			if (!defaults.index_files.has_value())
 				defaults.index_files = index_files;
@@ -427,6 +490,13 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 				if (server_config._errorPages.find(p.first) == server_config._errorPages.end())
 					server_config._errorPages.insert(p);
 			}
+		}
+		else if (d.name == "return")
+		{
+			Return return_directive = get_return(d);
+			// nginx only uses the first mention of "return", ignores all others
+			if (!server_config._returnDirective.has_value())
+				server_config._returnDirective = return_directive;
 		}
 		// FALLTHROUGH HANDLING (no valid directive for this scope!)
 		else
