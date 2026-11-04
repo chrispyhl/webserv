@@ -26,11 +26,13 @@ NGINX serves as reference with deliberate derivations.
 **3) Default port**
 - not emulated: without `listen`, NGINX defaults to `:80` (root) or `:8000`
 - subject: "config defines the ports"; so: no `listen` = config error
+- also not emulated: NGINX lets `listen 127.0.0.1` default to `port 80`
+- webserv throws an error instead
 
 **4) `error_page` / `index` inheritance**
 - emulated: a location defining its own `error_page`/`index` does not inherit the server's
 
-```nginx
+```NGINX
 server {
     error_page 404 /errors/404.html;
     error_page 500 /errors/500.html;
@@ -64,7 +66,7 @@ server {
 - webserv throws
 
 **10) Multiple `listen` arguments**
-- not emulated: one `listen` = one `address:port` or `port`
+- are not supported -> one `listen` = one `address:port` or `port`
 - anything else throws
 
 **11) `client_max_body_size`**
@@ -74,3 +76,21 @@ server {
 **12) `error_page` `=code`**
 - not emulated: `error_page 404 =200 /example.html` would show the client a 200, hiding the actual error
 - actual error codes are useful, especially during evaluation -> `=` argument throws
+
+**13) IPv4**
+- not emulated: support for `[::]:8080`
+- not required by subject, not necessary for interfacing with browser/curl (default fallback to IPv4 if IPv6 doesn't answer)
+
+**14) conf file `http { }` wrapper**
+- not emulated: NGINX's `http {}` wrapper for the server directives
+- webserv accepts only server directives at top level
+- NOTE: NGINX BEHAVIOR MIGHT BE IMPLEMENTED LATER DOWN THE LINE
+
+**15) server-level return**
+- is supported beyond the subject to emulate NGINX behavior
+- all NGINX forms; no variables ($host, $request_uri, $scheme are taken literally / rejected)
+
+**16) hostname as listen address host**
+- not emulated: NGINX accepts every hostname it can resolve as listen address
+- webserv accepts IPv4-addresses (X.X.X.X) and specifically "localhost" (regardless of lower-/upper-casing)
+- NOTE: NGINX BEHAVIOR MIGHT BE IMPLEMENTED LATER DOWN THE LINE
