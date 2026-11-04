@@ -15,21 +15,31 @@ OBJ_DIR = obj
 # one directory per module
 CONF_DIR = $(SRC_DIR)/config
 
+# config module: one subdirectory per parsing stage, plus the result the partner reads
+TOKENIZER_DIR = $(CONF_DIR)/tokenizer
+PARSER_DIR = $(CONF_DIR)/parser
+BUILDER_DIR = $(CONF_DIR)/builder
+RESULT_DIR = $(CONF_DIR)/result
+
 # every module's include folder; turned into -I flags in CXXFLAGS
-INC_DIRS =	$(SRC_DIR)/inc $(UTIL_DIR)/inc $(CONF_DIR)/inc 
+INC_DIRS =	$(SRC_DIR)/inc $(UTIL_DIR)/inc $(CONF_DIR)/inc \
+			$(TOKENIZER_DIR)/inc $(PARSER_DIR)/inc $(BUILDER_DIR)/inc $(RESULT_DIR)/inc
 
 SRC =	$(SRC_DIR)/main.cpp \
 		$(UTIL_DIR)/utils.cpp \
 		$(CONF_DIR)/parse_config.cpp \
-		$(CONF_DIR)/Tokenizer.cpp \
-		$(CONF_DIR)/Token.cpp \
-		$(CONF_DIR)/Config.cpp \
 		$(CONF_DIR)/ConfigError.cpp \
-		$(CONF_DIR)/Parser.cpp \
-		$(CONF_DIR)/LocationConfig.cpp \
-		$(CONF_DIR)/ServerConfig.cpp \
-		$(CONF_DIR)/ConfigBuilder.cpp \
-		$(CONF_DIR)/ListenAddress.cpp
+		$(TOKENIZER_DIR)/Tokenizer.cpp \
+		$(TOKENIZER_DIR)/Token.cpp \
+		$(PARSER_DIR)/Parser.cpp \
+		$(BUILDER_DIR)/ConfigBuilder.cpp \
+		$(BUILDER_DIR)/directive_checks.cpp \
+		$(BUILDER_DIR)/server_directives.cpp \
+		$(BUILDER_DIR)/shared_directives.cpp \
+		$(RESULT_DIR)/Config.cpp \
+		$(RESULT_DIR)/ServerConfig.cpp \
+		$(RESULT_DIR)/LocationConfig.cpp \
+		$(RESULT_DIR)/ListenAddress.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
 DEP = $(OBJ:.o=.d)
