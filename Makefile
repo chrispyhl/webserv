@@ -2,6 +2,10 @@ NAME = webserv
 
 CXX = c++
 CXXFLAGS = -Werror -Wall -Wextra -std=c++17 $(addprefix -I, $(INC_DIRS))
+# -MMD: while compiling, also write a .d file next to each .o that lists the headers it includes
+# -MP: add an empty rule per header, so a deleted or renamed header doesn't break the build
+# --> this guarantees that header changes are considered in recompiles
+DEPFLAGS = -MMD -MP
 RM = rm -rf
 
 SRC_DIR = srcs
@@ -28,6 +32,7 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(CONF_DIR)/ListenAddress.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
+DEP = $(OBJ:.o=.d)
 
 all: $(NAME)
 
@@ -37,7 +42,11 @@ $(NAME): $(OBJ)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
-	@$(CXX) $(CXXFLAGS) -c $< -o $@
+	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+# read the header lists from the .d files, so changing a header recompiles every .o that uses it
+# leading "-": no error while the .d files don't exist yet (first build, after clean)
+-include $(DEP)
 
 run: all
 	@./webserv
