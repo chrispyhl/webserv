@@ -55,8 +55,7 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 	ServerConfig server_config;
 
 	// locations need to be built last since directives that might function as default server values for locations also apply retroactively
-	std::vector<Directive> location_directives;
-
+	std::vector<config::LocationDirective> location_directives;
 	ServerDefaults defaults;
 
 	for (const Directive &d : server_block.children.value())
@@ -64,9 +63,8 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		// LOCATION HANDLING
 		if (d.name == "location")
 		{
-			if (!d.children.has_value())
-				throw ConfigError("directive \"location\" has no opening \"{\"", d.line);
-			location_directives.push_back(d);
+			// locations may be constructed later, but if there is a faulty config in there, it has to throw immediately
+			location_directives.push_back(config::get_location_directive(d));
 		}
 		// LISTEN ADDRESS HANDLING
 		else if (d.name == "listen")
@@ -133,6 +131,13 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 	// own message since nginx would not complain about missing listen directives (defaults to 80/8000, which webserv doesn't emulate)
 	if (server_config._listenAddresses.size() == 0)
 		throw ConfigError("no \"listen\" directive in \"server\" block", server_block.line);
+
+	// DEBUG
+	for (const config::LocationDirective &ld : location_directives)
+	{
+		std::cout << "=== LOCATIONDIRECTIVE DEBUG ===\nlocation path: \"" << ld.path << "\"\nexact match: " << (ld.exact_match ? "yes" : "no") << "\n";
+	}
+	// DEBUG END
 
 	return (server_config);
 }

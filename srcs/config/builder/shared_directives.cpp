@@ -1,6 +1,6 @@
 #include "shared_directives.hpp"
-#include "directive_checks.hpp"
 #include "ConfigError.hpp"
+#include "directive_checks.hpp"
 #include "utils.hpp"
 
 #include <cctype> // for std::isdigit()
@@ -10,6 +10,11 @@
 
 namespace config
 {
+
+static void invalid_return_code_throw(const Directive &d, const std::string &str)
+{
+	throw ConfigError("invalid return code \"" + str + "\"", d.line);
+}
 
 std::string get_root(const Directive &d)
 {
@@ -169,11 +174,11 @@ static std::size_t get_return_code(const Directive &d)
 		// code needs to be between (and including) 0 and 999
 		// can't be negative due to isdigit_string() check before, so only 999 needs guarding
 		if (code > 999)
-			throw ConfigError("invalid return code \"" + str + "\"", d.line);
+			invalid_return_code_throw(d, str);
 	}
 	catch (const std::invalid_argument &)
 	{
-		throw ConfigError("invalid return code \"" + str + "\"", d.line);
+		invalid_return_code_throw(d, str);
 	}
 	return (code);
 }
@@ -204,7 +209,7 @@ Return get_return(const Directive &d)
 				result.target = target;
 			}
 			else
-				throw ConfigError("invalid return code \"" + target + "\"", d.line);
+				invalid_return_code_throw(d, target);
 		}
 	}
 	// 2 arg scenario: first must be code, second is target
@@ -216,9 +221,79 @@ Return get_return(const Directive &d)
 		result.target = target;
 	}
 	else
-		throw ConfigError("invalid return code \"" + d.args[0] + "\"", d.line);
-
+		invalid_return_code_throw(d, d.args[0]);
 	return (result);
+}
+
+static bool get_location_modifier(const Directive &d)
+{
+	std::vector<std::string> unsupported_modifiers = { "~", "~*", "^~" };
+	std::string modifier = d.args[0];
+	if (modifier == "=")
+		return (true);
+	if (vector_contains(unsupported_modifiers, modifier))
+		throw ConfigError("location modifiers are not supported", d.line);
+
+	throw ConfigError("invalid location modifier \"" + modifier + "\"", d.line);
+}
+
+// exact_match is used by caller to build LocationDirective
+// also serves as a toggle for literal paths here
+static std::string get_location_path(const Directive &d, const std::string &str, bool &exact_match)
+{
+	std::string path;
+
+	if (str[0] == '=')
+	{
+		if (!exact_match)
+		{
+			exact_match = true;
+			path = str.substr(1);
+		}
+		else
+			throw ConfigError("location path \"" + str + "\" must start with \"/\"", d.line);
+	}
+	else
+		path = str;
+
+	// exact_match == false means that the following is NOT taken literally; not "no /" is the problem, but the user trying to make use of modifiers
+	if (!exact_match && (path[0] == '@' || path[0] == '~' || path.substr(0, 2) == "^~"))
+	{
+			throw ConfigError("location modifiers are not supported", d.line);
+	}
+	if (path.empty() || path[0] != '/')
+		throw ConfigError("location path \"" + path + "\" must start with \"/\"", d.line);
+
+	// trimming trailing forward-slashes
+	std::size_t path_end_pos = path.find_last_not_of('/');
+	// no non slashes = its all slashes!
+	if (path_end_pos == std::string::npos)
+		path = "/";
+	else
+		path = path.substr(0, path_end_pos + 1);
+
+	return (path);
+}
+
+LocationDirective get_location_directive(const Directive &d)
+{
+	if (!d.children.has_value())
+		throw ConfigError("directive \"location\" has no opening \"{\"", d.line);
+	if (d.args.empty() || d.args.size() > 2)
+		invalid_args_size_throw(d);
+
+	std::string path;
+	bool exact_match = false;
+
+	if (d.args.size() == 2)
+	{
+		exact_match = get_location_modifier(d);
+		path = get_location_path(d, d.args[1], exact_match);
+	}
+	else
+		path = get_location_path(d, d.args[0], exact_match);
+
+	return (LocationDirective { d, path, exact_match });
 }
 
 }
