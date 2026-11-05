@@ -17,6 +17,7 @@ class LocationConfig
 
 	public:
 		const std::string &path() const;
+		bool exactMatch() const;
 		const std::string &root() const;
 		bool inheritedRoot() const;
 		const std::vector<std::string> &indexFiles() const;
@@ -34,6 +35,9 @@ class LocationConfig
 
 		// URL prefix (with trailing slash removed)
 		std::string _path;
+		// info whether there was a '=' prior to the path argument ("location = /a")
+		// '=' only allows exact matches with the given location, no subdirectories are handled
+		bool _exactMatch;
 		// folder on disk
 		std::string _root;
 		// true = root comes from server, URL is appended

@@ -3,6 +3,7 @@
 // default values for all members unique to LocationConfig
 // the rest gets values from ConfigBuilder: either default values or inherited data from Server
 LocationConfig::LocationConfig() :
+	_exactMatch(false),
 	_root("html"),
 	_inheritedRoot(true),
 	_indexFiles({"index.html"}),
@@ -18,6 +19,11 @@ LocationConfig::LocationConfig() :
 const std::string &LocationConfig::path() const
 {
 	return (_path);
+}
+
+bool LocationConfig::exactMatch() const
+{
+	return (_exactMatch);
 }
 
 const std::string &LocationConfig::root() const
