@@ -1,6 +1,6 @@
 # webserv: `craabe` branch
 
-One half of webserv: config parser, request parsing, response generation.
+One half of webserv: config parser, routing, response building.
 
 > **Heavily WIP.** Terminal output currently shows debug/testing output, not the final behavior.
 
