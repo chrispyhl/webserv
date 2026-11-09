@@ -129,38 +129,28 @@ std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 	if (d.args.size() < 2)
 		invalid_args_size_throw(d);
 	std::vector<std::size_t> codes;
-	auto it = d.args.begin();
-	for (; it != d.args.end(); it++)
+	for (std::size_t i = 0; i < (d.args.size() - 2); i++)
 	{
-		if (isdigit_string(*it))
+		try
 		{
-			try
-			{
-				codes.push_back(str_to_size_t(*it));
-			}
-			catch (const std::invalid_argument &)
-			{
-				throw ConfigError("invalid value \"" + *it + "\"", d.line);
-			}
+			std::size_t code_nbr = str_to_size_t(d.args[i]);
+			if (code_nbr < 300 || code_nbr > 599)
+				throw ConfigError("value \"" + d.args[i] + "\" must be between 300 and 599", d.line);
+			if (code_nbr == 499)
+				throw ConfigError("invalid value \"499\"", d.line);
+			codes.push_back(code_nbr);
 		}
-		else
-			break;
+		catch (const std::invalid_argument &)
+		{
+			throw ConfigError("invalid value \"" + d.args[i] + "\"", d.line);
+		}
 	}
-	if (codes.empty())
-		throw ConfigError("invalid value \"" + d.args[0] + "\"", d.line);
-	if (it + 1 != d.args.end())
-		throw ConfigError("invalid value \"" + *it + "\"", d.line);
-	std::string uri = *it;
+	std::string uri = d.args[d.args.size() - 1];
+	if (uri[0] != '/')
+		throw ConfigError("invalid value \"" + uri + "\"", d.line);
 	std::map<std::size_t, std::string> error_pages;
-	for (size_t c : codes)
-	{
-		if (c < 300 || c > 599)
-			throw ConfigError("value \"" + std::to_string(c) + "\" must be between 300 and 599", d.line);
-		if (c == 499)
-			throw ConfigError("invalid value \"499\"", d.line);
-		error_pages.insert({ c, uri });
-	}
-	// TODO: implement nginx's URI guidelines
+	for (size_t code : codes)
+		error_pages.insert({ code, uri });
 	return (error_pages);
 }
 
@@ -259,7 +249,7 @@ static std::string get_location_path(const Directive &d, const std::string &str,
 	// exact_match == false means that the following is NOT taken literally; not "no /" is the problem, but the user trying to make use of modifiers
 	if (!exact_match && (path[0] == '@' || path[0] == '~' || path.substr(0, 2) == "^~"))
 	{
-			throw ConfigError("location modifiers are not supported", d.line);
+		throw ConfigError("location modifiers are not supported", d.line);
 	}
 	if (path.empty() || path[0] != '/')
 		throw ConfigError("location path \"" + path + "\" must start with \"/\"", d.line);

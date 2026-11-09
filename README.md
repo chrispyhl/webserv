@@ -64,6 +64,7 @@ server {
 
 **9) Gaps in listen addresses**
 - not emulated: NGINX resolves an empty octet to 0 (`127..0.1` -> `127.0.0.1`), which is non-standard
+- same goes for nginx's behavior with missing octets (`12.0.1` becomes `12.0.0.1` as per old IPv4 standard)
 - webserv throws
 
 **10) Multiple `listen` arguments**
@@ -116,3 +117,7 @@ server {
 - not emulated: NGINX accepts paths without a leading `/` (`location a`), although they can never match a request -> webserv throws
 - trailing slashes are normalized while parsing (`/files/` -> `/files`, except for `/`)
   - consequence: `location /a` and `location /a/` are duplicates in webserv, while NGINX treats them as two different locations
+
+**20) error_page redirects**
+- not emulated: `error_page 404 500` --> `500` as URI, which requires redirection
+- webserv simply throws if URI does not start with `/`
