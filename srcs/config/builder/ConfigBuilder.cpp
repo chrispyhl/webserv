@@ -112,8 +112,8 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 			for (const auto &p : error_pages)
 			{
 				// nginx only uses the first entry in case of duplicate error codes
-				if (server_config._errorPages.find(p.first) == server_config._errorPages.end())
-					server_config._errorPages.insert(p);
+				// .insert() is a no-op if the key is already in the container
+				server_config._errorPages.insert(p);
 			}
 		}
 		else if (d.name == "return")
