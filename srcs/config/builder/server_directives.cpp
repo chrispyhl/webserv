@@ -122,6 +122,8 @@ ListenAddress get_listen_address(const Directive &d)
 			throw ConfigError("no host in \"" + d.args[0] + "\" of the \"listen\" directive", d.line);
 		if (tolower_string(address) == "localhost")
 			address = "127.0.0.1";
+		else if (address == "*")
+			address = "0.0.0.0";
 		port = d.args[0].substr(colon_pos + 1);
 		// port is still obligatory
 		if (port.empty())
