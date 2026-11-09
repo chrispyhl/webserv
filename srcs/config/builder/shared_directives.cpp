@@ -129,7 +129,7 @@ std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 	if (d.args.size() < 2)
 		invalid_args_size_throw(d);
 	std::vector<std::size_t> codes;
-	for (std::size_t i = 0; i < (d.args.size() - 2); i++)
+	for (std::size_t i = 0; i < (d.args.size() - 1); i++)
 	{
 		try
 		{
