@@ -14,12 +14,16 @@
 # define CLIENT_HPP
 
 #include "Socket.hpp"
+#include "Request.hpp"
 
 struct Client {
 	Socket		socket;
 	std::string	send_buffer;
+	std::string	read_buffer;
+	HttpRequest	request;
+	bool		should_close;
 
-	explicit Client(int fd) : socket(fd), send_buffer("") {}
+	explicit Client(int fd) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false) {}
 };
 
 #endif
