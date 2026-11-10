@@ -50,13 +50,37 @@ void ConfigBuilder::warn_about_duplicates(const Config &config) const
 	}
 }
 
+
+std::vector<LocationConfig> ConfigBuilder::buildLocations(const std::vector<config::LocationDirective> &location_directives, const ServerDefaults &server_defaults, const ServerConfig &server_config) const
+{
+	std::vector<LocationConfig> locations;
+	const std::map<std::size_t, std::string> &error_pages = server_config.errorPages();
+
+	// TODO: remove compile flag pleasers
+	(void)server_defaults;
+	(void)error_pages;
+
+	// TODO: move below the location building: nginx reports errors inside location blocks before duplicates
+	// duplicate check: path and exact_match flag identical --> throw!
+	for (auto it1 = location_directives.begin(); it1 != location_directives.end(); it1++)
+	{
+		for (auto it2 = it1 + 1; it2 != location_directives.end(); it2++)
+		{
+			if (it1->path == it2->path && it1->exact_match == it2->exact_match)
+				throw ConfigError("duplicate location \"" + it2->path + "\"", it2->directive.line);
+		}
+	}
+
+	return (locations);
+}
+
 ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 {
 	ServerConfig server_config;
 
 	// locations need to be built last since directives that might function as default server values for locations also apply retroactively
 	std::vector<config::LocationDirective> location_directives;
-	ServerDefaults defaults;
+	ServerDefaults server_defaults;
 
 	for (const Directive &d : server_block.children.value())
 	{
@@ -78,33 +102,33 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		else if (d.name == "root")
 		{
 			std::string root = config::get_root(d);
-			if (defaults.root.has_value())
+			if (server_defaults.root.has_value())
 				config::duplicate_throw(d);
-			defaults.root = root;
+			server_defaults.root = root;
 		}
 		else if (d.name == "index")
 		{
 			std::vector<std::string> index_files = config::get_index_files(d);
 			// multiple occurrences of "index" in a server block are allowed
 			// can't .insert() on an optional without value
-			if (!defaults.index_files.has_value())
-				defaults.index_files = index_files;
+			if (!server_defaults.index_files.has_value())
+				server_defaults.index_files = index_files;
 			else
-				defaults.index_files->insert(defaults.index_files->end(), index_files.begin(), index_files.end());
+				server_defaults.index_files->insert(server_defaults.index_files->end(), index_files.begin(), index_files.end());
 		}
 		else if (d.name == "autoindex")
 		{
 			bool auto_index = config::get_auto_index(d);
-			if (defaults.auto_index.has_value())
+			if (server_defaults.auto_index.has_value())
 				config::duplicate_throw(d);
-			defaults.auto_index = auto_index;
+			server_defaults.auto_index = auto_index;
 		}
 		else if (d.name == "client_max_body_size")
 		{
 			std::size_t max_body_size = config::get_max_body_size(d);
-			if (defaults.max_body_size.has_value())
+			if (server_defaults.max_body_size.has_value())
 				config::duplicate_throw(d);
-			defaults.max_body_size = max_body_size;
+			server_defaults.max_body_size = max_body_size;
 		}
 		else if (d.name == "error_page")
 		{
@@ -132,10 +156,12 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 	if (server_config._listenAddresses.size() == 0)
 		throw ConfigError("no \"listen\" directive in \"server\" block", server_block.line);
 
+	server_config._locations = buildLocations(location_directives, server_defaults, server_config);
+
 	// DEBUG
 	for (const config::LocationDirective &ld : location_directives)
 	{
-		std::cout << "=== LOCATIONDIRECTIVE DEBUG ===\nlocation path: \"" << ld.path << "\"\nexact match: " << (ld.exact_match ? "yes" : "no") << "\n";
+		std::cout << "=== LOCATION DIRECTIVE DEBUG ===\nlocation path: \"" << ld.path << "\"\nexact match: " << (ld.exact_match ? "yes" : "no") << "\n";
 	}
 	// DEBUG END
 

@@ -4,6 +4,7 @@
 #include "Directive.hpp"
 #include "LocationConfig.hpp"
 #include "ServerConfig.hpp"
+#include "shared_directives.hpp"
 
 #include <cstddef>
 #include <optional>
@@ -29,6 +30,10 @@ class ConfigBuilder
 				std::optional<bool> auto_index;
 				std::optional<std::size_t> max_body_size;
 		};
+
+		// buildLocations() needs to be a method of ConfigBuilder so it can directly access LocationConfig's private members
+		// add ServerConfig for its error_pages
+		std::vector<LocationConfig> buildLocations(const std::vector<config::LocationDirective> &location_directives, const ServerDefaults &server_defaults, const ServerConfig &server_config) const;
 
 		// helper that profits from member access
 		void warn_about_duplicates(const Config &config) const;
