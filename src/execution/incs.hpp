@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   incs.hpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 14:28:56 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/29 15:13:24 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/10 15:14:23 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <stdlib.h>
 #include <cstring>
 #include <unistd.h>
@@ -45,5 +46,6 @@
 #define CONSTRU "\033[3m"
 #define ORANGE "\033[38;5;208m"
 
+extern volatile sig_atomic_t g_interrupted;
 
 #endif

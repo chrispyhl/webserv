@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 15:12:05 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/29 15:48:51 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/10 15:14:54 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,11 @@
 #include "Socket.hpp"
 #include "Server.hpp"
 
+volatile sig_atomic_t g_interrupted = 0;
+
 void	handle_sigint(int sig){
 	(void)sig;
+	g_interrupted = 1;
 }
 
 int main(){
