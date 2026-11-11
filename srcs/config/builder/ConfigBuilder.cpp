@@ -50,18 +50,106 @@ void ConfigBuilder::warn_about_duplicates(const Config &config) const
 	}
 }
 
+LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &location_directive, const BlockValues &inherited_values) const
+{
+	// final product
+	LocationConfig location_config;
 
-std::vector<LocationConfig> ConfigBuilder::buildLocations(const std::vector<config::LocationDirective> &location_directives, const ServerDefaults &server_defaults, const ServerConfig &server_config) const
+	location_config._path = location_directive.path;
+	location_config._exactMatch = location_directive.exact_match;
+
+	// temp storage of block values for duplicate checking
+	BlockValues block_values;
+
+	// .has_value() will always be true since a location without a block will throw before
+	// even an empty block is valid, according to nginx
+	const std::vector<Directive> &location_block = location_directive.directive.children.value();
+	// if location_block is empty, this is a harmless no-op
+	for (const Directive &d : location_block)
+	{
+		if (d.name == "root")
+		{
+			std::string root = config::get_root(d);
+			if (block_values.root.has_value())
+				config::duplicate_throw(d);
+			block_values.root = root;
+		}
+		else if (d.name == "index")
+		{
+			std::vector<std::string> index_files = config::get_index_files(d);
+			// multiple occurrences of "index" in a location block are allowed
+			// can't .insert() on an optional without value
+			if (!block_values.index_files.has_value())
+				block_values.index_files = index_files;
+			else
+				block_values.index_files->insert(block_values.index_files->end(), index_files.begin(), index_files.end());
+		}
+		else if (d.name == "autoindex")
+		{
+			bool auto_index = config::get_auto_index(d);
+			if (block_values.auto_index.has_value())
+				config::duplicate_throw(d);
+			block_values.auto_index = auto_index;
+		}
+		else if (d.name == "client_max_body_size")
+		{
+			std::size_t max_body_size = config::get_max_body_size(d);
+			if (block_values.max_body_size.has_value())
+				config::duplicate_throw(d);
+			block_values.max_body_size = max_body_size;
+		}
+		else if (d.name == "error_page")
+		{
+			std::map<std::size_t, std::string> error_pages = config::get_error_pages(d);
+			for (const auto &p : error_pages)
+			{
+				// nginx only uses the first entry in case of duplicate error codes
+				// .insert() is a no-op if the key is already in the container
+				location_config._errorPages.insert(p);
+			}
+		}
+		else if (d.name == "return")
+		{
+			Return return_directive = config::get_return(d);
+			// nginx only uses the first mention of "return", ignores all others
+			if (!location_config._returnDirective.has_value())
+				location_config._returnDirective = return_directive;
+		}
+		else if (d.name == "allow_methods")
+		{
+
+		}
+		else if (d.name == "upload_dir")
+		{
+
+		}
+		else if (d.name == "cgi")
+		{
+
+		}
+		else if (d.name == "location")
+		{
+			// TODO: add location nesting
+		}
+		else
+			config::bad_directive_throw(d);
+	}
+
+	// TODO: fill blanks with serverdefaults from inherited_values
+	(void)inherited_values;
+
+	return (location_config);
+}
+
+std::vector<LocationConfig> ConfigBuilder::buildLocations(const std::vector<config::LocationDirective> &location_directives, const BlockValues &inherited_values) const
 {
 	std::vector<LocationConfig> locations;
-	const std::map<std::size_t, std::string> &error_pages = server_config.errorPages();
 
-	// TODO: remove compile flag pleasers
-	(void)server_defaults;
-	(void)error_pages;
+	for (const config::LocationDirective &ld : location_directives)
+		locations.push_back(buildLocation(ld, inherited_values));
 
-	// TODO: move below the location building: nginx reports errors inside location blocks before duplicates
 	// duplicate check: path and exact_match flag identical --> throw!
+	// NOTE: needs to be below the location building section as a final check to emulate nginx
 	for (auto it1 = location_directives.begin(); it1 != location_directives.end(); it1++)
 	{
 		for (auto it2 = it1 + 1; it2 != location_directives.end(); it2++)
@@ -78,16 +166,17 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 {
 	ServerConfig server_config;
 
-	// locations need to be built last since directives that might function as default server values for locations also apply retroactively
+	// locations need to be built last since server directives that locations inherit also apply retroactively
 	std::vector<config::LocationDirective> location_directives;
-	ServerDefaults server_defaults;
+	// values of the server's shared directives; the locations inherit them
+	BlockValues inherited_values;
 
 	for (const Directive &d : server_block.children.value())
 	{
 		// LOCATION HANDLING
 		if (d.name == "location")
 		{
-			// locations may be constructed later, but if there is a faulty config in there, it has to throw immediately
+			// locations are built after the loop, but a faulty location line has to throw immediately
 			location_directives.push_back(config::get_location_directive(d));
 		}
 		// LISTEN ADDRESS HANDLING
@@ -102,33 +191,33 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		else if (d.name == "root")
 		{
 			std::string root = config::get_root(d);
-			if (server_defaults.root.has_value())
+			if (inherited_values.root.has_value())
 				config::duplicate_throw(d);
-			server_defaults.root = root;
+			inherited_values.root = root;
 		}
 		else if (d.name == "index")
 		{
 			std::vector<std::string> index_files = config::get_index_files(d);
 			// multiple occurrences of "index" in a server block are allowed
 			// can't .insert() on an optional without value
-			if (!server_defaults.index_files.has_value())
-				server_defaults.index_files = index_files;
+			if (!inherited_values.index_files.has_value())
+				inherited_values.index_files = index_files;
 			else
-				server_defaults.index_files->insert(server_defaults.index_files->end(), index_files.begin(), index_files.end());
+				inherited_values.index_files->insert(inherited_values.index_files->end(), index_files.begin(), index_files.end());
 		}
 		else if (d.name == "autoindex")
 		{
 			bool auto_index = config::get_auto_index(d);
-			if (server_defaults.auto_index.has_value())
+			if (inherited_values.auto_index.has_value())
 				config::duplicate_throw(d);
-			server_defaults.auto_index = auto_index;
+			inherited_values.auto_index = auto_index;
 		}
 		else if (d.name == "client_max_body_size")
 		{
 			std::size_t max_body_size = config::get_max_body_size(d);
-			if (server_defaults.max_body_size.has_value())
+			if (inherited_values.max_body_size.has_value())
 				config::duplicate_throw(d);
-			server_defaults.max_body_size = max_body_size;
+			inherited_values.max_body_size = max_body_size;
 		}
 		else if (d.name == "error_page")
 		{
@@ -156,7 +245,9 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 	if (server_config._listenAddresses.size() == 0)
 		throw ConfigError("no \"listen\" directive in \"server\" block", server_block.line);
 
-	server_config._locations = buildLocations(location_directives, server_defaults, server_config);
+	if (!server_config._errorPages.empty())
+		inherited_values.error_pages = server_config._errorPages;
+	server_config._locations = buildLocations(location_directives, inherited_values);
 
 	// DEBUG
 	for (const config::LocationDirective &ld : location_directives)
