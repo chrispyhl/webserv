@@ -1,8 +1,8 @@
 #include "LocationConfig.hpp"
 
-// default values for all members unique to LocationConfig
-// the rest gets values from ConfigBuilder: either default values or inherited data from Server
-LocationConfig::LocationConfig() :
+// default values for all members unique to LocationConfig, mostly adapted from nginx
+// fallback if neither location nor server sets the value; ConfigBuilder overwrites them with own or inherited values
+	LocationConfig::LocationConfig() :
 	_exactMatch(false),
 	_root("html"),
 	_inheritedRoot(true),
