@@ -42,3 +42,13 @@ std::size_t str_to_size_t(const std::string &str)
 
 	return (result);
 }
+
+std::string trim_trailing_forward_slashes(const std::string &str)
+{
+	std::size_t until_slash = str.find_last_not_of('/');
+	// edge case "/" or "/////[...]"
+	// DO NOT CHANGE: returning "" can trip config parsing ("" can mean "feature is off", "/" cannot)
+	if (until_slash == std::string::npos)
+		return ("/");
+	return (str.substr(0, until_slash + 1));
+}
