@@ -35,6 +35,7 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(BUILDER_DIR)/ConfigBuilder.cpp \
 		$(BUILDER_DIR)/directive_checks.cpp \
 		$(BUILDER_DIR)/server_directives.cpp \
+		$(BUILDER_DIR)/location_directives.cpp \
 		$(BUILDER_DIR)/shared_directives.cpp \
 		$(RESULT_DIR)/Config.cpp \
 		$(RESULT_DIR)/ServerConfig.cpp \

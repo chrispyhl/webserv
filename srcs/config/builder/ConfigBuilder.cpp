@@ -1,6 +1,7 @@
 #include "ConfigBuilder.hpp"
 #include "ConfigError.hpp"
 #include "directive_checks.hpp"
+#include "location_directives.hpp"
 #include "server_directives.hpp"
 #include "shared_directives.hpp"
 #include "utils.hpp"
@@ -58,7 +59,7 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 	location_config._path = location_directive.path;
 	location_config._exactMatch = location_directive.exact_match;
 
-	// temp storage of block values for duplicate checking
+	// temp storage struct for block values for duplicate checking
 	BlockValues block_values;
 
 	// .has_value() will always be true since a location without a block will throw before
@@ -67,6 +68,7 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 	// if location_block is empty, this is a harmless no-op
 	for (const Directive &d : location_block)
 	{
+		// ===SHARED DIRECTIVES===
 		if (d.name == "root")
 		{
 			std::string root = config::get_root(d);
@@ -98,14 +100,15 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 				config::duplicate_throw(d);
 			block_values.max_body_size = max_body_size;
 		}
+		// "error_page" and "return" don't need duplicate protection, so they go directly into the result object location_config
 		else if (d.name == "error_page")
 		{
 			std::map<std::size_t, std::string> error_pages = config::get_error_pages(d);
-			for (const auto &p : error_pages)
+			for (const auto &ep : error_pages)
 			{
 				// nginx only uses the first entry in case of duplicate error codes
 				// .insert() is a no-op if the key is already in the container
-				location_config._errorPages.insert(p);
+				location_config._errorPages.insert(ep);
 			}
 		}
 		else if (d.name == "return")
@@ -115,27 +118,33 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 			if (!location_config._returnDirective.has_value())
 				location_config._returnDirective = return_directive;
 		}
+		// ===LOCATION-ONLY DIRECTIVES===
 		else if (d.name == "allow_methods")
 		{
-
+			if (!location_config._allowedMethods.empty())
+				config::duplicate_throw(d);
+			location_config._allowedMethods = config::get_allowed_methods(d);
 		}
 		else if (d.name == "upload_dir")
 		{
-
+			std::cerr << "DEBUG WARNING: \"upload_dir\" directive ignored; not supported yet\n";
 		}
 		else if (d.name == "cgi")
 		{
-
+			std::cerr << "DEBUG WARNING: \"cgi\" directive ignored; not supported yet\n";
 		}
+		// ===NESTED LOCATION DIRECTIVE===
 		else if (d.name == "location")
 		{
-			// TODO: add location nesting
+			std::cerr << "DEBUG WARNING: nested location directive ignored; not supported yet\n";
 		}
 		else
 			config::bad_directive_throw(d);
 	}
 
-	// TODO: fill blanks with serverdefaults from inherited_values
+	// TODO: da big MERGE: fill blanks with server defaults from inherited_values
+	// if inherited_values does not contain values for every empty member, set them to default values: _root = "html"; _indexFiles = "index.html"
+	// if not set after loop here: _allowedMethods = {"GET"}
 	(void)inherited_values;
 
 	return (location_config);
@@ -222,11 +231,11 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		else if (d.name == "error_page")
 		{
 			std::map<std::size_t, std::string> error_pages = config::get_error_pages(d);
-			for (const auto &p : error_pages)
+			for (const auto &ep : error_pages)
 			{
 				// nginx only uses the first entry in case of duplicate error codes
 				// .insert() is a no-op if the key is already in the container
-				server_config._errorPages.insert(p);
+				server_config._errorPages.insert(ep);
 			}
 		}
 		else if (d.name == "return")
