@@ -44,8 +44,8 @@ server {
 - `/upload` has 413, but NOT 404 or 500
 
 **5) Allowed methods**
-- not emulated: NGINX restricts no methods by default
-- webserv: GET is the only default -> upload/delete locations need explicit `allow_methods`
+- webserv: GET is the only default -> upload/delete (POST/DELETE) need explicit `allow_methods`
+- not emulated: NGINX's `limit_except` (inverted logic, needs a block with `deny all`); webserv uses a plain list: `allow_methods GET POST;`
 
 **6) Virtual hosts**
 - supported, although only optional per subject ('if you plan to implement virtual hosts'; little extra work)
