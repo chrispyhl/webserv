@@ -7,6 +7,7 @@
 #include <limits>
 #include <optional>
 #include <stdexcept> // for std::invalid_argument
+#include <string>
 
 namespace config
 {
@@ -16,12 +17,21 @@ static void invalid_return_code_throw(const Directive &d, const std::string &str
 	throw ConfigError("invalid return code \"" + str + "\"", d.line);
 }
 
+static std::string trim_trailing_forward_slashes(const std::string &str)
+{
+	std::size_t until_slash = str.find_last_not_of('/');
+	// edge case "/" or "/////[...]"
+	if (until_slash == std::string::npos)
+		return ("/");
+	return (str.substr(0, until_slash + 1));
+}
+
 std::string get_root(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() != 1)
 		invalid_args_size_throw(d);
-	return (d.args[0]);
+	return (trim_trailing_forward_slashes(d.args[0]));
 }
 
 std::vector<std::string> get_index_files(const Directive &d)
@@ -254,13 +264,7 @@ static std::string get_location_path(const Directive &d, const std::string &str,
 	if (path.empty() || path[0] != '/')
 		throw ConfigError("location path \"" + path + "\" must start with \"/\"", d.line);
 
-	// trimming trailing forward-slashes
-	std::size_t path_end_pos = path.find_last_not_of('/');
-	// no non slashes = its all slashes!
-	if (path_end_pos == std::string::npos)
-		path = "/";
-	else
-		path = path.substr(0, path_end_pos + 1);
+	path = trim_trailing_forward_slashes(path);
 
 	return (path);
 }
