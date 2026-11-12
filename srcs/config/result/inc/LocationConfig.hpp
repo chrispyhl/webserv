@@ -49,7 +49,7 @@ class LocationConfig
 		bool _autoIndex;
 		// limit for request bodies in bytes
 		std::size_t _maxBodySize;
-		// accepted methods; at least GET by default (no duplicates in std::set)
+		// accepted methods ("GET" is always set if location block has no allow_methods line)
 		std::set<std::string> _allowedMethods;
 		// where uploads go OR uploads disabled
 		std::optional<std::string> _uploadDirectory;

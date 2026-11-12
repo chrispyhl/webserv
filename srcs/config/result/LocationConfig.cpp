@@ -1,18 +1,11 @@
 #include "LocationConfig.hpp"
 
-// default values for all members unique to LocationConfig, mostly adapted from nginx
-// fallback if neither location nor server sets the value; ConfigBuilder overwrites them with own or inherited values
-	LocationConfig::LocationConfig() :
-	_exactMatch(false),
-	_root("html"),
-	_inheritedRoot(true),
-	_indexFiles({"index.html"}),
-	_autoIndex(false),
-	// = 1 MiB (mebibyte) = nginx default
-	_maxBodySize(1024 * 1024),
-	_allowedMethods({"GET"}),
-	_uploadDirectory(std::nullopt),
-	_cgiHandlers({})
+// initialization list: security fallback for members of types without automatic initialization (bool, size_t); ConfigBuilder overwrites them with own or inherited values
+LocationConfig::LocationConfig() :	_exactMatch(false),
+									_inheritedRoot(true),
+									_autoIndex(false),
+									// = 1 MiB (mebibyte) = nginx default
+									_maxBodySize(1024 * 1024)
 {
 }
 
