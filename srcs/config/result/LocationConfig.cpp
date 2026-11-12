@@ -59,7 +59,7 @@ const std::set<std::string> &LocationConfig::allowedMethods() const
 	return (_allowedMethods);
 }
 
-const std::optional<std::string> &LocationConfig::uploadDirectory() const
+const std::string &LocationConfig::uploadDirectory() const
 {
 	return (_uploadDirectory);
 }
