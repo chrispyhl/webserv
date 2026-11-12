@@ -17,15 +17,6 @@ static void invalid_return_code_throw(const Directive &d, const std::string &str
 	throw ConfigError("invalid return code \"" + str + "\"", d.line);
 }
 
-static std::string trim_trailing_forward_slashes(const std::string &str)
-{
-	std::size_t until_slash = str.find_last_not_of('/');
-	// edge case "/" or "/////[...]"
-	if (until_slash == std::string::npos)
-		return ("/");
-	return (str.substr(0, until_slash + 1));
-}
-
 std::string get_root(const Directive &d)
 {
 	check_for_illegal_block(d);
