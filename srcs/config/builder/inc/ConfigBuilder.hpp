@@ -31,7 +31,7 @@ class ConfigBuilder
 				std::optional<std::vector<std::string>> index_files;
 				std::optional<bool> auto_index;
 				std::optional<std::size_t> max_body_size;
-				// copy of a server/location block's error pages, set after all server directives are read
+				// copy of a server, set after all server directives are read (for location only if it has no own error_pages)
 				std::optional<std::map<std::size_t, std::string>> error_pages;
 		};
 
@@ -41,8 +41,10 @@ class ConfigBuilder
 		// buildLocation() needs to be a method of ConfigBuilder so it can directly access LocationConfig's private members
 		LocationConfig buildLocation(const config::LocationDirective &location_directive, const BlockValues &inherited_values) const;
 
-		// helper that profits from member access
-		void warn_about_duplicates(const Config &config) const;
+		// helpers that profit from member access
+		void warnAboutDuplicates(const Config &config) const;
+		void mergeLocationInheritance(LocationConfig &location_config, const BlockValues &block_values, const BlockValues &inherited_values) const;
+
 		// members
 		std::vector<Directive> _directives;
 };

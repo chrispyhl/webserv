@@ -25,7 +25,7 @@ static void verify_top_level(const std::vector<Directive> &directives)
 	}
 }
 
-void ConfigBuilder::warn_about_duplicates(const Config &config) const
+void ConfigBuilder::warnAboutDuplicates(const Config &config) const
 {
 	// looking through servers
 	for (auto server1_it = config._servers.begin(); server1_it != config._servers.end(); server1_it++)
@@ -49,6 +49,61 @@ void ConfigBuilder::warn_about_duplicates(const Config &config) const
 			}
 		}
 	}
+}
+
+static void warn_about_upload_without_post(const LocationConfig &location_config, const config::LocationDirective &location_directive)
+{
+	if (!location_config.uploadDirectory().empty() && (location_config.allowedMethods().find("POST") == location_config.allowedMethods().end()))
+		std::cerr << "warn: \"upload_dir\" in location \"" << location_directive.directive.args[0] << "\" in line " << location_directive.path << " has no effect without \"POST\" in \"allow_methods\"\n";
+}
+
+void ConfigBuilder::mergeLocationInheritance(LocationConfig &location_config, const BlockValues &block_values, const BlockValues &inherited_values) const
+{
+	// ROOT + INHERITEDROOT
+	if (block_values.root.has_value())
+	{
+		location_config._root = block_values.root.value();
+		location_config._inheritedRoot = false;
+	}
+	// _inheritedRoot is left to constructor-default "true" here
+	else
+	{
+		if (inherited_values.root.has_value())
+			location_config._root = inherited_values.root.value();
+		else
+			location_config._root = "html";
+	}
+
+	// INDEXFILES
+	if (block_values.index_files.has_value())
+		location_config._indexFiles = block_values.index_files.value();
+	else
+	{
+		if (inherited_values.index_files.has_value())
+			location_config._indexFiles = inherited_values.index_files.value();
+		else
+			location_config._indexFiles = { "index.html" };
+	}
+
+	// AUTOINDEX
+	if (block_values.auto_index.has_value())
+		location_config._autoIndex = block_values.auto_index.value();
+	else if (inherited_values.auto_index.has_value())
+		location_config._autoIndex = inherited_values.auto_index.value();
+	// in case of absence: already defaulted to "false" in LocationConfig constructor
+
+	// MAXBODYSIZE
+	if (block_values.max_body_size.has_value())
+		location_config._maxBodySize = block_values.max_body_size.value();
+	else if (inherited_values.max_body_size.has_value())
+		location_config._maxBodySize = inherited_values.max_body_size.value();
+	// in case of absence: already defaulted to "1024 * 1024" (nginx value) in LocationConfig constructor
+
+	// ERROR PAGES
+	if (block_values.error_pages.has_value())
+		location_config._errorPages = block_values.error_pages.value();
+	else if (inherited_values.error_pages.has_value())
+		location_config._errorPages = inherited_values.error_pages.value();
 }
 
 LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &location_directive, const BlockValues &inherited_values) const
@@ -100,17 +155,19 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 				config::duplicate_throw(d);
 			block_values.max_body_size = max_body_size;
 		}
-		// "error_page" and "return" don't need duplicate protection, so they go directly into the result object location_config
 		else if (d.name == "error_page")
 		{
 			std::map<std::size_t, std::string> error_pages = config::get_error_pages(d);
-			for (const auto &ep : error_pages)
-			{
+			// multiple occurrences of "error_page" in a location block are allowed
+			// can't .insert() on an optional without value
+			if (!block_values.error_pages.has_value())
+				block_values.error_pages = error_pages;
+			else
 				// nginx only uses the first entry in case of duplicate error codes
 				// .insert() is a no-op if the key is already in the container
-				location_config._errorPages.insert(ep);
-			}
+				block_values.error_pages->insert(error_pages.begin(), error_pages.end());
 		}
+		// server-level return directives are not inherited by the location so this goes directly into this function's result
 		else if (d.name == "return")
 		{
 			Return return_directive = config::get_return(d);
@@ -121,13 +178,17 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		// ===LOCATION-ONLY DIRECTIVES===
 		else if (d.name == "allow_methods")
 		{
+			std::set<std::string> allowed_methods = config::get_allowed_methods(d);
 			if (!location_config._allowedMethods.empty())
 				config::duplicate_throw(d);
-			location_config._allowedMethods = config::get_allowed_methods(d);
+			location_config._allowedMethods = allowed_methods;
 		}
 		else if (d.name == "upload_dir")
 		{
-			std::cerr << "DEBUG WARNING: \"upload_dir\" directive ignored; not supported yet\n";
+			std::string upload_directory = config::get_upload_directory(d);
+			if (!location_config._uploadDirectory.empty())
+				config::duplicate_throw(d);
+			location_config._uploadDirectory = upload_directory;
 		}
 		else if (d.name == "cgi")
 		{
@@ -142,10 +203,14 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 			config::bad_directive_throw(d);
 	}
 
-	// TODO: da big MERGE: fill blanks with server defaults from inherited_values
-	// if inherited_values does not contain values for every empty member, set them to default values: _root = "html"; _indexFiles = "index.html"
-	// if not set after loop here: _allowedMethods = {"GET"}
-	(void)inherited_values;
+	// potential warning cerr-print: upload_directory without allowed "POST" is no-op
+	warn_about_upload_without_post(location_config, location_directive);
+
+	mergeLocationInheritance(location_config, block_values, inherited_values);
+
+	// as required by subject: GET is always allowed if not otherwise configured
+	if (location_config._allowedMethods.empty())
+		location_config._allowedMethods = { "GET" };
 
 	return (location_config);
 }
@@ -258,13 +323,6 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		inherited_values.error_pages = server_config._errorPages;
 	server_config._locations = buildLocations(location_directives, inherited_values);
 
-	// DEBUG
-	for (const config::LocationDirective &ld : location_directives)
-	{
-		std::cout << "=== LOCATION DIRECTIVE DEBUG ===\nlocation path: \"" << ld.path << "\"\nexact match: " << (ld.exact_match ? "yes" : "no") << "\n";
-	}
-	// DEBUG END
-
 	return (server_config);
 }
 
@@ -282,7 +340,7 @@ Config ConfigBuilder::build()
 	for (const Directive &d : _directives)
 		config._servers.push_back(buildServer(d));
 
-	warn_about_duplicates(config);
+	warnAboutDuplicates(config);
 
 	return (config);
 }

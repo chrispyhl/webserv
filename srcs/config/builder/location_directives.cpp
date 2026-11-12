@@ -30,4 +30,13 @@ std::set<std::string> get_allowed_methods(const Directive &d)
 	return (allowed_methods);
 }
 
+std::string get_upload_directory(const Directive &d)
+{
+	check_for_illegal_block(d);
+	if (d.args.size() != 1)
+		invalid_args_size_throw(d);
+	
+	return (trim_trailing_forward_slashes(d.args[0]));
+}
+
 }
