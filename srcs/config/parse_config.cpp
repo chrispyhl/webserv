@@ -46,24 +46,24 @@ static std::string condense_to_string(std::ifstream &filestream)
 	return (str);
 }
 
-static void debug_print_parser(const std::vector<Directive> &directives)
-{
-	for (Directive d : directives)
-	{
-		std::cout << "name: " << d.name << "\nargs: [";
-		for (std::string s : d.args)
-			std::cout << s << " ";
-		std::cout << "]\nline: " << d.line << "\n";
-		if (!d.children.has_value())
-			std::cout << "NO CHILDREN\n";
-		else
-		{
-			std::cout << "------\nCHILDREN\n";
-			debug_print_parser(d.children.value());
-			std::cout << "------\n";
-		}
-	}
-}
+// static void debug_print_parser(const std::vector<Directive> &directives)
+// {
+// 	for (Directive d : directives)
+// 	{
+// 		std::cout << "name: " << d.name << "\nargs: [";
+// 		for (std::string s : d.args)
+// 			std::cout << s << " ";
+// 		std::cout << "]\nline: " << d.line << "\n";
+// 		if (!d.children.has_value())
+// 			std::cout << "NO CHILDREN\n";
+// 		else
+// 		{
+// 			std::cout << "------\nCHILDREN\n";
+// 			debug_print_parser(d.children.value());
+// 			std::cout << "------\n";
+// 		}
+// 	}
+// }
 
 Config parse_config(int argc, char **argv)
 {
