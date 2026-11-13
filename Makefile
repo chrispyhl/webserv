@@ -14,6 +14,7 @@ OBJ_DIR = obj
 
 # one directory per module
 CONF_DIR = $(SRC_DIR)/config
+EXEC_DIR = $(SRC_DIR)/execution
 
 # config module: one subdirectory per parsing stage, plus the result the partner reads
 TOKENIZER_DIR = $(CONF_DIR)/tokenizer
@@ -23,7 +24,8 @@ RESULT_DIR = $(CONF_DIR)/result
 
 # every module's include folder; turned into -I flags in CXXFLAGS
 INC_DIRS =	$(SRC_DIR)/inc $(UTIL_DIR)/inc $(CONF_DIR)/inc \
-			$(TOKENIZER_DIR)/inc $(PARSER_DIR)/inc $(BUILDER_DIR)/inc $(RESULT_DIR)/inc
+			$(TOKENIZER_DIR)/inc $(PARSER_DIR)/inc $(BUILDER_DIR)/inc $(RESULT_DIR)/inc \
+			$(EXEC_DIR)/inc
 
 SRC =	$(SRC_DIR)/main.cpp \
 		$(UTIL_DIR)/utils.cpp \
@@ -40,7 +42,10 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(RESULT_DIR)/Config.cpp \
 		$(RESULT_DIR)/ServerConfig.cpp \
 		$(RESULT_DIR)/LocationConfig.cpp \
-		$(RESULT_DIR)/ListenAddress.cpp
+		$(RESULT_DIR)/ListenAddress.cpp \
+		$(EXEC_DIR)/Request.cpp \
+		$(EXEC_DIR)/Server.cpp \
+		$(EXEC_DIR)/Socket.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
 DEP = $(OBJ:.o=.d)
