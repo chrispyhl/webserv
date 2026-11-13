@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: craabe <craabe@42>                         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/13 15:34:37 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/13 15:54:25 by craabe           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 			std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
 			<< " Path: " << client.request.get_path() << RESET << std::endl;
 
-			std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
+			std::string response = "HTTP/1.0 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
 			client.send_buffer.append(response);
 			poll_fds[i].events |= POLLOUT;
 
@@ -61,7 +61,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 		}
 		else if (state == STATE_ERROR){
 			std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-			std::string	bad_request = "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
+			std::string	bad_request = "HTTP/1.0 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
 			client.send_buffer.append(bad_request);
 			poll_fds[i].events |= POLLOUT;
 			client.should_close = true;
