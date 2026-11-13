@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/10 16:29:23 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/13 15:34:37 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,7 +111,7 @@ void	Server::poll_loop(void){
 		int	ret = poll(poll_fds.data(), poll_fds.size(), -1);
 		if (ret < 0){
 			if (errno == EINTR || g_interrupted){
-				std::cout << YELLOW << "Server interupted by signal. Shutting down..." << RESET << std::endl;
+				std::cout << YELLOW << "\nServer interupted by signal. Shutting down..." << RESET << std::endl;
 				break;
 			}
 			std::cerr << RED << "poll failed!" << RESET << std::endl;
