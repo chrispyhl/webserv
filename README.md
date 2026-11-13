@@ -14,20 +14,20 @@ This is a two-person project with a clear split of responsibilities:
 | Socket layer and `poll()` event loop | [cpohl](https://github.com/chrispyhl) | [`cpohl`](../../tree/cpohl) |
 
 
-# webserv: `craabe` branch
+## webserv: `craabe` branch
 
 One half of webserv: config parser, routing, response building.
 
 > **Heavily WIP.** Terminal output currently shows debug/testing output, not the final behavior.
 
-## Build and run
+### Build and run
 
 ```sh
 make        # build
 make run    # build and start
 ```
 
-## Design choices
+### Design choices
 
 NGINX serves as reference with deliberate deviations.
 
