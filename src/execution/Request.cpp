@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/10 13:44:33 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/10 13:44:33 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/13 14:36:37 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,7 +82,7 @@ bool HttpRequest::parse_header_line(const std::string& line){
 	else
 		key.clear();
 
-	std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+	std::transform(key.begin(), key.end(), key.begin(), ::tolower); // use Chris function
 
 	size_t start = value.find_first_not_of(" \t");
 	if (start != std::string::npos)
