@@ -25,7 +25,10 @@ const std::string& HttpRequest::get_body() const { return _body; }
 const std::map<std::string, std::string>& HttpRequest::get_headers() const { return _headers; }
 const std::string& HttpRequest::get_header(const std::string& key) const {
 	static const std::string empty = "";
-	auto it = _headers.find(key);
+	std::string lower_key = key;
+	std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), ::tolower);
+
+	auto it = _headers.find(lower_key);
 	if (it != _headers.end())
 		return it->second;
 	return empty;
@@ -68,8 +71,18 @@ bool HttpRequest::parse_header_line(const std::string& line){
 	size_t colon = line.find(':');
 	if (colon == 0 || colon == std::string::npos)
 		return false;
+
 	std::string key = line.substr(0, colon);
 	std::string value = line.substr(colon + 1);
+
+	size_t key_start = key.find_first_not_of(" \t");
+	size_t key_end = key.find_last_not_of(" \t");
+	if (key_start != std::string::npos && key_end != std::string::npos)
+		key = key.substr(key_start, key_end - key_start + 1);
+	else
+		key.clear();
+
+	std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 
 	size_t start = value.find_first_not_of(" \t");
 	if (start != std::string::npos)
@@ -79,7 +92,7 @@ bool HttpRequest::parse_header_line(const std::string& line){
 
 	_headers[key] = value;
 
-	if (key == "Content-Length"){
+	if (key == "content-length"){
 
 		if (value.empty() || value.find('-') != std::string::npos || value.find_first_not_of("0123456789") != std::string::npos)
 			return false;

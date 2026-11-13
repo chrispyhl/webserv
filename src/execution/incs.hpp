@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 14:28:56 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/10 15:14:23 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/13 12:29:51 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,8 @@
 
 #include <csignal>
 #include <cerrno>
+
+#include <algorithm>
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"
