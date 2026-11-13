@@ -1,6 +1,6 @@
 # webserv
 
-A non-blocking HTTP/1.1 server written in C++17, inspired by NGINX. Team project at [42 Heilbronn](https://www.42heilbronn.de).
+A non-blocking HTTP/1.0 server written in C++17, inspired by NGINX. Team project at [42 Heilbronn](https://www.42heilbronn.de).
 
 > **Status:** in progress
 
