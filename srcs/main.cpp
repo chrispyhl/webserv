@@ -25,10 +25,14 @@ int main(int argc, char **argv)
 
 		// CRAABE PART
 		Config config = parse_config(argc, argv);
-		
+
 		// CPOHL PART
-		Server server(8080);
-		server.poll_loop();
+		std::vector<ListenAddress> addresses = config.listenAddresses();
+		for (const ListenAddress &addr : addresses)
+		{
+			Server server(addr.port);
+			server.poll_loop();
+		}
 	}
 	catch (const std::exception &e)
 	{
