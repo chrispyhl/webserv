@@ -16,20 +16,23 @@ void handle_sigint(int sig)
 
 int main(int argc, char **argv)
 {
-	signal(SIGINT, handle_sigint);
-	signal(SIGQUIT, handle_sigint);
-	signal(SIGPIPE, SIG_IGN);
 	try
 	{
-		Config config = parse_config(argc, argv);
-		Server server(8080);
+		// signal handling
+		signal(SIGINT, handle_sigint);
+		signal(SIGQUIT, handle_sigint);
+		signal(SIGPIPE, SIG_IGN);
 
+		// CRAABE PART
+		Config config = parse_config(argc, argv);
+		
+		// CPOHL PART
+		Server server(8080);
 		server.poll_loop();
 	}
 	catch (const std::exception &e)
 	{
 		std::cerr << RED << e.what() << RESET << std::endl;
-
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
