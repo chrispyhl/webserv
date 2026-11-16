@@ -353,14 +353,14 @@ Config ConfigBuilder::build()
 
 	warnAboutDuplicates(config);
 
-	// DEBUG
-	for (const ServerConfig &sc : config._servers)
-	{
-		std::string location_path = "/files";
-		const LocationConfig &lc = sc.findLocation(location_path);
-		std::cout << "Server: " << (sc._serverNames.empty() ? "NO SERVER NAME" : sc._serverNames[0]) << "\nlocation found for location path " << location_path << ": " << lc.path() << "\n==========\n";
-	}
-	// DEBUG END
+	// // DEBUG
+	// for (const ServerConfig &sc : config._servers)
+	// {
+	// 	std::string location_path = "/files";
+	// 	const LocationConfig &lc = sc.findLocation(location_path);
+	// 	std::cout << "Server: " << (sc._serverNames.empty() ? "NO SERVER NAME" : sc._serverNames[0]) << "\nlocation found for location path " << location_path << ": " << lc.path() << "\n==========\n";
+	// }
+	// // DEBUG END
 	
 	return (config);
 }
