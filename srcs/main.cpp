@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 		Config config = parse_config(argc, argv);
 		
 		// CPOHL PART
-		Server server(8080);
+		Server server(config);
 		server.poll_loop();
 	}
 	catch (const std::exception &e)
