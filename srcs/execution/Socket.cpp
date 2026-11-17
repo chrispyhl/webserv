@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Socket.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 14:39:13 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/29 15:18:38 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/16 14:28:58 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@ int	Socket::get_fd(){
 	return (_fd);
 }
 
-void	Socket::listen_on(int port){
+void	Socket::listen_on(std::uint32_t address, int port){
 	// Option: Make port reusable to avoid "Address already in use"- fail
 	int	opt = 1;
 	if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0){
@@ -50,13 +50,13 @@ void	Socket::listen_on(int port){
 		throw std::runtime_error("setsocket failed!");
 	}
 	// 2. Define Address
-	sockaddr_in address{};
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(port);
+	sockaddr_in addr{};
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = htonl(address);
+	addr.sin_port = htons(port);
 
 	// 3. Call bind
-	if (bind(_fd, reinterpret_cast<const struct sockaddr*>(&address), sizeof(address)) < 0){
+	if (bind(_fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(addr)) < 0){
 		std::cerr << RED << "Bind failed!" << RESET << std::endl;
 		throw std::runtime_error("Bind failed!");
 	}

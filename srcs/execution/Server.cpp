@@ -3,32 +3,49 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: craabe <craabe@42>                         +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/13 15:54:25 by craabe           ###   ########.fr       */
+/*   Updated: 2026/11/17 13:41:09 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
 
-Server::Server(int port){
-	_listener.listen_on(port);
-	_fd = _listener.get_fd();
-
-	pollfd	server_pollfd{};
-	server_pollfd.fd = _fd;
-	server_pollfd.events = POLLIN;
-	poll_fds.push_back(server_pollfd);
+void	Server::mark_for_removal(int fd, std::vector<int>& fds_to_remove){
+	if(!vector_contains(fds_to_remove, fd))
+		fds_to_remove.push_back(fd);
 }
 
-void	Server::accept_client(){
-	int	client_fd = accept(_fd, NULL, NULL);
+Server::Server(const Config &config) : _config(config) {
+	std::vector<ListenAddress> addresses = _config.listenAddresses();
+
+	for (const ListenAddress &la : addresses) {
+		Socket	listener_socket;
+		listener_socket.listen_on(la.address, la.port);
+		
+		int	fd = listener_socket.get_fd();
+		_listeners.push_back(std::move(listener_socket));
+		_listener_addresses[fd] = la;
+		
+		pollfd	pfd{};
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		poll_fds.push_back(pfd);
+
+		std::cout << YELLOW << "Listening on: " << address_to_string(la) << ":" << la.port << RESET << std::endl;
+	}
+}
+
+void	Server::accept_client(int listener_fd){
+	int	client_fd = accept(listener_fd, NULL, NULL);
 	if (client_fd < 0){
 		std::cerr << RED << "accept failed!" << RESET << std::endl;
 		return;
 	}
-	clients.emplace(client_fd, Client(client_fd));
+	ListenAddress la = _listener_addresses.at(listener_fd);
+	
+	clients.emplace(client_fd, Client(client_fd, la));
 
 	pollfd	client_pollfd{};
 	client_pollfd.fd = client_fd;
@@ -47,28 +64,45 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 
 		client.read_buffer.append(buffer, bytes_received);
 
-		ParseState state = client.request.parse(client.read_buffer);
+		while(true){
+			ParseState state = client.request.parse(client.read_buffer);
+			
+			if (state == STATE_COMPLETE){
+				std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
+				<< " Path: " << client.request.get_path() << RESET << std::endl;
 
-		if (state == STATE_COMPLETE){
-			std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
-			<< " Path: " << client.request.get_path() << RESET << std::endl;
+				const ServerConfig &server_conf = _config.selectServer(client.listen_adress, client.request.get_header("Host"));
+				(void)server_conf; // TEMP, will use later
+				std::string response = "HTTP/1.0 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
+				client.send_buffer.append(response);
+				poll_fds[i].events |= POLLOUT;
 
-			std::string response = "HTTP/1.0 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
-			client.send_buffer.append(response);
-			poll_fds[i].events |= POLLOUT;
-
-			client.request.clear();
-		}
-		else if (state == STATE_ERROR){
-			std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-			std::string	bad_request = "HTTP/1.0 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
-			client.send_buffer.append(bad_request);
-			poll_fds[i].events |= POLLOUT;
-			client.should_close = true;
+				client.request.clear();
+				// if buffer is empty we break
+				if (client.read_buffer.empty())
+					break;
+			}
+			else if (state == STATE_ERROR){
+				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
+				std::string	bad_request = "HTTP/1.0 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
+				client.send_buffer.append(bad_request);
+				poll_fds[i].events |= POLLOUT;
+				client.should_close = true;
+				break;
+			}
+			else
+				break;
 		}
 	}
-	else
-		fds_to_remove.push_back(client_fd);
+	// Client disconnected
+	else if (bytes_received == 0)
+		mark_for_removal(client_fd, fds_to_remove);
+	else{
+		if (errno != EWOULDBLOCK && errno != EAGAIN){
+			std::cout << RED << "recv failed! errno: " << errno << RESET << std::endl;
+			mark_for_removal(client_fd, fds_to_remove);
+		}
+	}
 }
 
 void	Server::send_data(size_t i, std::vector<int>& fds_to_remove){
@@ -82,14 +116,14 @@ void	Server::send_data(size_t i, std::vector<int>& fds_to_remove){
 		}
 		else if (bytes_sent < 0){
 			std::cerr << RED << "send failed!" << RESET << std::endl;
-			fds_to_remove.push_back(client_fd);
+			mark_for_removal(client_fd, fds_to_remove);
 			return;
 		}
 	}
 	if (client.send_buffer.empty()){
 		poll_fds[i].events &= ~POLLOUT;
 		if (client.should_close){
-			fds_to_remove.push_back(client_fd);
+			mark_for_removal(client_fd, fds_to_remove);
 		}
 	}
 }
@@ -119,28 +153,28 @@ void	Server::poll_loop(void){
 		}
 		std::vector<int>	fds_to_remove;
 		for (size_t i = 0; i < poll_fds.size(); ++i){
+			int	current_fd = poll_fds[i].fd;
+
+			// Check if fd is part of listener
+			auto	it = std::find_if(_listeners.begin(), _listeners.end(), [current_fd](Socket &s){
+				return s.get_fd() == current_fd;
+			});
+			if (it != _listeners.end()){
+				if (poll_fds[i].revents & POLLIN)
+					accept_client(current_fd);
+			}
+			// Normal CLient
+			else{
+				if (poll_fds[i].revents & POLLIN)
+					receive_data(i, fds_to_remove);
+				if (poll_fds[i].revents & POLLOUT)
+					send_data(i, fds_to_remove);
+			}
 
 			if (poll_fds[i].revents & POLLHUP || poll_fds[i].revents & POLLERR){
-				if (poll_fds[i].fd == _fd){
-					std::cerr << RED << "Error on listener socket!" << RESET << std::endl;
-					continue;
-				}
-				fds_to_remove.push_back(poll_fds[i].fd);
-				std::cerr << RED << "poll mistake on client FD: " << poll_fds[i].fd << "!" << RESET << std::endl;
+				mark_for_removal(current_fd, fds_to_remove);
+				std::cerr << RED << "Poll error on fd: " << current_fd << RESET << std::endl;
 				continue;
-			}
-			if (poll_fds[i].fd == _fd){
-				if (poll_fds[i].revents & POLLIN){
-					accept_client();
-				}
-			}
-			else{
-				if (poll_fds[i].revents & POLLIN){
-					receive_data(i, fds_to_remove);
-				}
-				if (poll_fds[i].revents & POLLOUT){
-					send_data(i, fds_to_remove);
-				}
 			}
 		}
 		cleanup_fds(fds_to_remove);

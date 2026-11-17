@@ -27,12 +27,8 @@ int main(int argc, char **argv)
 		Config config = parse_config(argc, argv);
 
 		// CPOHL PART
-		std::vector<ListenAddress> addresses = config.listenAddresses();
-		for (const ListenAddress &addr : addresses)
-		{
-			Server server(addr.port);
-			server.poll_loop();
-		}
+		Server server(config);
+		server.poll_loop();
 	}
 	catch (const std::exception &e)
 	{

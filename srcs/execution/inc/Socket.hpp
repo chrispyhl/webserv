@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Socket.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42.fr>                +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/19 14:34:40 by cpohl             #+#    #+#             */
-/*   Updated: 2026/10/20 17:32:39 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/16 14:27:09 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ class Socket {
 		~Socket();
 
 		int		get_fd(void);
-		void	listen_on(int port);
+		void	listen_on(std::uint32_t address, int port);
 		void	set_nonblocking(void);
 };
 

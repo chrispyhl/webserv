@@ -15,15 +15,17 @@
 
 #include "Socket.hpp"
 #include "Request.hpp"
+#include "ListenAddress.hpp"
 
 struct Client {
-	Socket		socket;
-	std::string	send_buffer;
-	std::string	read_buffer;
-	HttpRequest	request;
-	bool		should_close;
+	Socket			socket;
+	std::string		send_buffer;
+	std::string		read_buffer;
+	HttpRequest		request;
+	bool			should_close;
+	ListenAddress	listen_address;
 
-	explicit Client(int fd) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false) {}
+	explicit Client(int fd, ListenAddress la) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false), listen_adress(la) {}
 };
 
 #endif
