@@ -14,16 +14,36 @@ const std::vector<ListenAddress> &ServerConfig::listenAddresses() const
 	return (_listenAddresses);
 }
 
-// find the server's location that is responsible for the path of the request
-// path "/files/a.txt" wants "location "/files"
+/*
+	find the server's location that is responsible for the path of the request
+
+	MATCHING RULES
+	- the absolute best match is a full match of the request path (trailing slashes trimmed) and exactMatch == true
+	- if this isn't found, a prefix location matches in one of three cases:
+		CASE 3) location path == "/"
+				(matches everything, due to implicit location "/" always the bottomline)
+		CASE 2) request path == location path + "/" + [...]
+				(begins with location path and continues)
+		CASE 1) location path == request path
+	- among all matching locations, the longest location path wins
+
+	EXAMPLE FOR DIRECTORY
+	path "/files/data/example" wants, in descending priority:
+		"location = /files/data/example"
+		"location /files/data/example"
+		"location /files/data"
+		"location /files"
+		"location /"
+
+	EXAMPLE FOR FILE
+	path "/files/a.txt" wants, in descending priority:
+		"location = /files/a.txt"
+		"location /files/a.txt"
+		"location /files"
+		"location /"
+*/
 const LocationConfig &ServerConfig::findLocation(const std::string &path) const
 {
-	// the absolute best match is a full match of the path argument and exactMatch == true
-	// if this isn't found, the ranking is as follows:
-	// 3) path() == "/" (matches everything, due to implicit location "/" always the bottomline)
-	// 2) path() == path
-	// 1) path() == path + "/" + [...] (begins with path and continues)
-	// basically, longest path wins
 	const LocationConfig *best_match = nullptr;
 
 	std::string clean_path = trim_trailing_forward_slashes(path);
@@ -37,9 +57,9 @@ const LocationConfig &ServerConfig::findLocation(const std::string &path) const
 			// all other exact locations can't be exactly == clean_path
 			continue;
 		}
-		bool matches = (lc.path() == "/" // 3)
-			|| lc.path() == clean_path // 2)
-			|| clean_path.substr(0, lc.path().size() + 1) == lc.path() + "/"); // 1)
+		bool matches = (lc.path() == "/" // = CASE 3)
+			|| clean_path.substr(0, lc.path().size() + 1) == lc.path() + "/" // = CASE 2)
+			|| lc.path() == clean_path); // = CASE 1)
 		// if there is a match AND EITHER no match was saved so far OR this match is better (= longer) than the saved one => save this one
 		if (matches && (!best_match || lc.path().size() > (*best_match).path().size()))
 			best_match = &lc;
