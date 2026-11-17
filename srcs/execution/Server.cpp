@@ -71,7 +71,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
 				<< " Path: " << client.request.get_path() << RESET << std::endl;
 
-				const ServerConfig &server_conf = _config.selectServer(client.listen_adress, client.request.get_header("Host"));
+				const ServerConfig &server_conf = _config.selectServer(client.listen_address, client.request.get_header("Host"));
 				(void)server_conf; // TEMP, will use later
 				std::string response = "HTTP/1.0 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
 				client.send_buffer.append(response);
