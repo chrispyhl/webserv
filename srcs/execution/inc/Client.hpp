@@ -25,7 +25,7 @@ struct Client {
 	bool			should_close;
 	ListenAddress	listen_address;
 
-	explicit Client(int fd, ListenAddress la) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false), listen_adress(la) {}
+	explicit Client(int fd, ListenAddress la) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false), listen_address(la) {}
 };
 
 #endif
