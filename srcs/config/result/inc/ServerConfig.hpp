@@ -5,9 +5,9 @@
 #include "Return.hpp"
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
-#include <map>
 #include <vector>
 
 class ServerConfig
@@ -16,6 +16,7 @@ class ServerConfig
 
 	public:
 		const std::vector<ListenAddress> &listenAddresses() const;
+		const LocationConfig &findLocation(const std::string &path) const;
 		const std::vector<std::string> &serverNames() const;
 		const std::vector<LocationConfig> &locations() const;
 		const std::optional<Return> &returnDirective() const;
