@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
 		// CRAABE PART
 		Config config = parse_config(argc, argv);
-		
+
 		// CPOHL PART
 		Server server(config);
 		server.poll_loop();

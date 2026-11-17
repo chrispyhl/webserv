@@ -223,14 +223,25 @@ std::vector<LocationConfig> ConfigBuilder::buildLocations(const std::vector<conf
 		locations.push_back(buildLocation(ld, inherited_values));
 
 	// duplicate check: path and exact_match flag identical --> throw!
-	// NOTE: needs to be below the location building section as a final check to emulate nginx
 	for (auto it1 = location_directives.begin(); it1 != location_directives.end(); it1++)
-	{
 		for (auto it2 = it1 + 1; it2 != location_directives.end(); it2++)
-		{
 			if (it1->path == it2->path && it1->exact_match == it2->exact_match)
 				throw ConfigError("duplicate location \"" + it2->path + "\"", it2->directive.line);
-		}
+
+	// each server needs a "location /" as a base location; it either is in the config or needs to be added here
+	// NOTE: "location = /" does not count since it only matches exactly "/", not "/index.html", for example
+	bool base_location_found = false;
+	for (const config::LocationDirective &ld : location_directives)
+		if (ld.path == "/" && ld.exact_match == false)
+			base_location_found = true;
+	if (!base_location_found)
+	{
+		// empty children = this location gets filled with server/default values
+		// can't be just "{}" since children-field is std::optional
+		// making it "{}" means "nullopt" to std::optional which trips logic accessing .value()
+		Directive implicit_directive = { "location", {"/"}, 0, std::vector<Directive>{} };
+		config::LocationDirective base_location_directive = { implicit_directive, "/", false };
+		locations.push_back(buildLocation(base_location_directive, inherited_values));
 	}
 
 	return (locations);
@@ -342,5 +353,14 @@ Config ConfigBuilder::build()
 
 	warnAboutDuplicates(config);
 
+	// // DEBUG
+	// for (const ServerConfig &sc : config._servers)
+	// {
+	// 	std::string location_path = "/files";
+	// 	const LocationConfig &lc = sc.findLocation(location_path);
+	// 	std::cout << "Server: " << (sc._serverNames.empty() ? "NO SERVER NAME" : sc._serverNames[0]) << "\nlocation found for location path " << location_path << ": " << lc.path() << "\n==========\n";
+	// }
+	// // DEBUG END
+	
 	return (config);
 }
