@@ -137,3 +137,7 @@ server {
 **20) error_page redirects**
 - not emulated: `error_page 404 500` --> `500` as URI, which requires redirection
 - webserv simply throws if URI does not start with `/`
+
+**21) directives without NGINX equivalent**
+- `upload_dir` and `cgi` are webserv's own directives; NGINX doesn't have those
+- `cgi EXTENSION [interpreter path]`: with an interpreter, the script is run by it; without, the script is executed directly
