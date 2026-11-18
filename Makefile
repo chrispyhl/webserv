@@ -45,7 +45,8 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(RESULT_DIR)/ListenAddress.cpp \
 		$(EXEC_DIR)/Request.cpp \
 		$(EXEC_DIR)/Server.cpp \
-		$(EXEC_DIR)/Socket.cpp
+		$(EXEC_DIR)/Socket.cpp \
+		$(EXEC_DIR)/Response.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
 DEP = $(OBJ:.o=.d)
