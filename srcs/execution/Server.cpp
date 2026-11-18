@@ -6,11 +6,12 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/17 13:41:09 by chris            ###   ########.fr       */
+/*   Updated: 2026/11/18 17:03:34 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include "Response.hpp"
 
 void	Server::mark_for_removal(int fd, std::vector<int>& fds_to_remove){
 	if(!vector_contains(fds_to_remove, fd))
@@ -71,11 +72,65 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
 				<< " Path: " << client.request.get_path() << RESET << std::endl;
 
-				const ServerConfig &server_conf = _config.selectServer(client.listen_address, client.request.get_header("Host"));
-				(void)server_conf; // TEMP, will use later
-				std::string response = "HTTP/1.0 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
-				client.send_buffer.append(response);
+				const ServerConfig		&server_conf = _config.selectServer(client.listen_address, client.request.get_header("Host"));
+				const LocationConfig	&location_conf = server_conf.findLocation(client.request.get_path());
+
+
+				// PHASE 1 DEBUG LOG
+				std::cout << BLUE << "[Location Match] " << RESET << MAGENTA 
+				<< "Request Path: " << client.request.get_path()
+				<< " -> Matched Location: " << location_conf.path()
+				<< " (Root: " << location_conf.root()
+				<< ", Autoindex: " << (location_conf.autoIndex() ? "on" : "off")
+				<< ", MaxBody: " << location_conf.maxBodySize() << ")" << RESET << std::endl;
+				
+				// Test 1: Check if Body is too big
+				if (client.request.get_content_length() > location_conf.maxBodySize()){
+					std::cerr << RED << "Error: Request Body exceeds client_max_body_size" << RESET << std::endl;
+
+					Response	err_res;
+					err_res.set_status(413, "Request Entity Too Large");
+					err_res.set_body("413 Request Entity Too Large");
+					client.send_buffer.append(err_res.build());
+
+					poll_fds[i].events |= POLLOUT;
+					client.should_close = true;
+					client.request.clear();
+					break;
+				}
+
+				// Get real data path
+				std::string	req_path = client.request.get_path();
+				if (req_path == "/")
+					req_path = "/index.html"; // Standard startfile
+
+				std::string	file_path = location_conf.root() + req_path;
+
+				// Open File
+				std::ifstream	file(file_path, std::ios::binary);
+
+				// Response
+				Response	res;
+				
+				if (!file.is_open()){
+					// ERROR 404 -- NOT FOUND
+					std::cerr << RED << "Error: File not found: " << file_path << RESET << std::endl;
+					res.set_status(404, "Not Found");
+					res.set_body("404 Not Found\r\n");
+				}
+				else{
+					std::string	content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+					res.set_status(200, "OK");
+					res.set_content_type(file_path);
+					res.set_body(content);
+				}
+
+				client.send_buffer.append(res.build());
 				poll_fds[i].events |= POLLOUT;
+
+				// As HTTP/1.0 Client should close after response
+				client.should_close = true;
 
 				client.request.clear();
 				// if buffer is empty we break
@@ -84,8 +139,10 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				std::string	bad_request = "HTTP/1.0 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
-				client.send_buffer.append(bad_request);
+				Response	bad_req;
+				bad_req.set_status(400, "Bad Request");
+				bad_req.set_body("Bad Request\r\n");
+				client.send_buffer.append(bad_req.build());
 				poll_fds[i].events |= POLLOUT;
 				client.should_close = true;
 				break;
@@ -98,10 +155,8 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 	else if (bytes_received == 0)
 		mark_for_removal(client_fd, fds_to_remove);
 	else{
-		if (errno != EWOULDBLOCK && errno != EAGAIN){
-			std::cout << RED << "recv failed! errno: " << errno << RESET << std::endl;
-			mark_for_removal(client_fd, fds_to_remove);
-		}
+		std::cout << RED << "recv failed! Closing connection. " << RESET << std::endl;
+		mark_for_removal(client_fd, fds_to_remove);
 	}
 }
 
