@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/10 13:44:33 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/13 14:36:37 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/17 17:40:22 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@ HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0) {}
 HttpRequest::~HttpRequest() {}
 
 ParseState HttpRequest::get_state() const { return _state; }
+size_t	HttpRequest::get_content_length() const { return _content_length; }
 const std::string& HttpRequest::get_method() const { return _method; }
 const std::string& HttpRequest::get_path() const { return _path; }
 const std::string& HttpRequest::get_query() const { return _query; }

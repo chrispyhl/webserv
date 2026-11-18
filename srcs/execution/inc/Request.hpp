@@ -34,6 +34,7 @@ class HttpRequest {
 		ParseState									parse(std::string &read_buffer);
 
 		ParseState									get_state() const;
+		size_t										get_content_length() const;
 		const std::string&							get_method() const;
 		const std::string&							get_path() const;
 		const std::string&							get_query() const;
