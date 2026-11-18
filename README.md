@@ -90,6 +90,7 @@ server {
 **11) `client_max_body_size`**
 - not emulated: NGINX's signed 64-bit limit (`off_t`)
 - webserv accepts values up to `std::size_t`'s limit
+- emulated: `client_max_body_size 0` (also `0k`, `0m`, `0g`) disables the limit, as in NGINX; webserv stores it as the upper limit of `std::size_t`
 
 **12) `error_page` `=code`**
 - not emulated: `error_page 404 =200 /example.html` would show the client a 200, hiding the actual error
@@ -128,7 +129,7 @@ server {
 
 **19) location syntax**
 - emulated: `location = /path` (exact match: only `/path` itself, not `/path/sub`)
-- emulated: nested locations; the inner path must lie within the outer one, the inner location inherits from the outer one
+- not emulated: nested locations: not explicitly required by subject, (apparently) not part of the given tester executables (NOTE: MIGHT BE IMPLEMENTED LATER)
 - not emulated: named locations (`location @name`); they are only reachable via `try_files`, which is not required by the subject -> throws 'location modifiers are not supported'
 - not emulated: NGINX accepts paths without a leading `/` (`location a`), although they can never match a request -> webserv throws
 - trailing slashes are normalized while parsing (`/files/` -> `/files`, except for `/`)
@@ -137,3 +138,7 @@ server {
 **20) error_page redirects**
 - not emulated: `error_page 404 500` --> `500` as URI, which requires redirection
 - webserv simply throws if URI does not start with `/`
+
+**21) directives without NGINX equivalent**
+- `upload_dir` and `cgi` are webserv's own directives; NGINX doesn't have those
+- `cgi EXTENSION [interpreter path]`: with an interpreter, the script is run by it; without, the script is executed directly
