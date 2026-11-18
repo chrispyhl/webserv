@@ -91,10 +91,14 @@ std::size_t get_max_body_size(const Directive &d)
 		throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
 	}
 
+	// if the argument value is 0, set max_body_size to std::size_t's upper limit (nginx: 0 disables the limit)
+	if (max_body_size == 0)
+		return (std::numeric_limits<std::size_t>::max());
+
 	if (!suffix.has_value())
 		return (max_body_size); // no suffix = just return base value
 
-	std::size_t limit = std::numeric_limits<size_t>::max();
+	std::size_t limit = std::numeric_limits<std::size_t>::max();
 	switch (suffix.value())
 	{
 		case ('k'):
@@ -121,6 +125,7 @@ std::size_t get_max_body_size(const Directive &d)
 		default:
 			break;
 	}
+	// reaching this point means that the argument value overflows std::size_t
 	throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
 }
 

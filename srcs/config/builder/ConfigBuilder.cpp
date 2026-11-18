@@ -7,6 +7,8 @@
 #include "utils.hpp"
 
 #include <iostream>
+#include <map>
+#include <utility> // for std::pair
 
 ConfigBuilder::ConfigBuilder(std::vector<Directive> directives) : _directives(directives)
 {
@@ -192,13 +194,14 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		}
 		else if (d.name == "cgi")
 		{
-			std::cerr << "DEBUG WARNING: \"cgi\" directive ignored; not supported yet\n";
+			std::pair<std::string, std::string> handler = config::get_cgi_handler_pair(d);
+			if (location_config._cgiHandlers.find(handler.first) != location_config._cgiHandlers.end())
+				throw ConfigError("duplicate cgi extension \"" + handler.first + "\"", d.line);
+			location_config._cgiHandlers.insert(handler);
 		}
-		// ===NESTED LOCATION DIRECTIVE===
+		// ===NESTED LOCATION DIRECTIVE=== | might be added later!
 		else if (d.name == "location")
-		{
-			std::cerr << "DEBUG WARNING: nested location directive ignored; not supported yet\n";
-		}
+			throw ConfigError("nested locations are not supported", d.line);
 		else
 			config::bad_directive_throw(d);
 	}
@@ -239,7 +242,7 @@ std::vector<LocationConfig> ConfigBuilder::buildLocations(const std::vector<conf
 		// empty children = this location gets filled with server/default values
 		// can't be just "{}" since children-field is std::optional
 		// making it "{}" means "nullopt" to std::optional which trips logic accessing .value()
-		Directive implicit_directive = { "location", {"/"}, 0, std::vector<Directive>{} };
+		Directive implicit_directive = { "location", { "/" }, 0, std::vector<Directive> { } };
 		config::LocationDirective base_location_directive = { implicit_directive, "/", false };
 		locations.push_back(buildLocation(base_location_directive, inherited_values));
 	}
@@ -361,6 +364,6 @@ Config ConfigBuilder::build()
 	// 	std::cout << "Server: " << (sc._serverNames.empty() ? "NO SERVER NAME" : sc._serverNames[0]) << "\nlocation found for location path " << location_path << ": " << lc.path() << "\n==========\n";
 	// }
 	// // DEBUG END
-	
+
 	return (config);
 }
