@@ -90,6 +90,7 @@ server {
 **11) `client_max_body_size`**
 - not emulated: NGINX's signed 64-bit limit (`off_t`)
 - webserv accepts values up to `std::size_t`'s limit
+- emulated: `client_max_body_size 0` (also `0k`, `0m`, `0g`) disables the limit, as in NGINX; webserv stores it as the upper limit of `std::size_t`
 
 **12) `error_page` `=code`**
 - not emulated: `error_page 404 =200 /example.html` would show the client a 200, hiding the actual error
