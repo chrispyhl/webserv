@@ -128,7 +128,7 @@ server {
 
 **19) location syntax**
 - emulated: `location = /path` (exact match: only `/path` itself, not `/path/sub`)
-- emulated: nested locations; the inner path must lie within the outer one, the inner location inherits from the outer one
+- not emulated: nested locations: not explicitly required by subject, (apparently) not part of the given tester executables (NOTE: MIGHT BE IMPLEMENTED LATER)
 - not emulated: named locations (`location @name`); they are only reachable via `try_files`, which is not required by the subject -> throws 'location modifiers are not supported'
 - not emulated: NGINX accepts paths without a leading `/` (`location a`), although they can never match a request -> webserv throws
 - trailing slashes are normalized while parsing (`/files/` -> `/files`, except for `/`)

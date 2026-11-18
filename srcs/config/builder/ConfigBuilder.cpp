@@ -194,11 +194,11 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		{
 			std::cerr << "DEBUG WARNING: \"cgi\" directive ignored; not supported yet\n";
 		}
-		// ===NESTED LOCATION DIRECTIVE===
-		else if (d.name == "location")
-		{
-			std::cerr << "DEBUG WARNING: nested location directive ignored; not supported yet\n";
-		}
+		// ===NESTED LOCATION DIRECTIVE=== | might be added later!
+		// else if (d.name == "location")
+		// {
+		// 	std::cerr << "DEBUG WARNING: nested location directive ignored; not supported yet\n";
+		// }
 		else
 			config::bad_directive_throw(d);
 	}
