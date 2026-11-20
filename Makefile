@@ -49,6 +49,7 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(EXEC_DIR)/Server.cpp \
 		$(EXEC_DIR)/Socket.cpp \
 		$(ROUT_DIR)/Response.cpp \
+		$(ROUT_DIR)/route_request.cpp \
 		$(ROUT_DIR)/error_response.cpp
 
 
