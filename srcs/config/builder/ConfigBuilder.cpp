@@ -354,6 +354,17 @@ Config ConfigBuilder::build()
 	for (const Directive &d : _directives)
 		config._servers.push_back(buildServer(d));
 
+	// collect every distinct listen address once, so listenAddresses() can return a reference
+	for (const ServerConfig &s : config._servers)
+	{
+		for (const ListenAddress &a : s.listenAddresses())
+		{
+			// the == operator is overloaded for ListenAddresses, comparing both address and port and only returning true if both match!
+			if (!vector_contains(config._listenAddresses, a))
+				config._listenAddresses.push_back(a);
+		}
+	}
+
 	warnAboutDuplicates(config);
 
 	// // DEBUG
