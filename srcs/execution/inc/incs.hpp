@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 14:28:56 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/18 17:08:16 by chris            ###   ########.fr       */
+/*   Updated: 2026/11/20 15:58:07 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,6 @@
 #include <cerrno>
 
 #include <algorithm>
-#include <fstream>
 
 #include "utils.hpp"
 
