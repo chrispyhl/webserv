@@ -8,20 +8,9 @@ Config::Config()
 {
 }
 
-std::vector<ListenAddress> Config::listenAddresses() const
+const std::vector<ListenAddress> &Config::listenAddresses() const
 {
-	std::vector<ListenAddress> listen_addresses;
-
-	for (const ServerConfig &s : _servers)
-	{
-		for (const ListenAddress &a : s.listenAddresses())
-		{
-			// the == operator is overloaded for ListenAddressess, comparing both address and port and only returning true if both match!
-			if (!vector_contains(listen_addresses, a))
-				listen_addresses.push_back(a);
-		}
-	}
-	return (listen_addresses);
+	return (_listenAddresses);
 }
 
 const ServerConfig &Config::selectServer(const ListenAddress &listen_address, const std::string &host_header) const

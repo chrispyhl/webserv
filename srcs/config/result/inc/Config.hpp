@@ -11,7 +11,8 @@ class Config
 		friend class ConfigBuilder;
 
 	public:
-		std::vector<ListenAddress> listenAddresses() const;
+		// every distinct listen address of all servers (computed once by ConfigBuilder)
+		const std::vector<ListenAddress> &listenAddresses() const;
 		// empty host_header string ("") == no header (HTTP/1.0) --> default server answers
 		const ServerConfig &selectServer(
 				const ListenAddress &listen_address,
@@ -21,4 +22,5 @@ class Config
 		Config();
 
 		std::vector<ServerConfig> _servers;
+		std::vector<ListenAddress> _listenAddresses;
 };
