@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 16:13:52 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/20 17:10:50 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				poll_fds[i].events |= POLLOUT;
 
 				// As HTTP/1.0 Client should close after response
-				client.should_close = res.closeConnection();
+				client.should_close = true;
 
 				client.request.clear();
 				// if buffer is empty we break
@@ -93,7 +93,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				Response	res_err = get_error_response(400);
 				client.send_buffer.append(res_err.toString());
 				poll_fds[i].events |= POLLOUT;
-				client.should_close = res_err.closeConnection();
+				client.should_close = true;
 				client.request.clear();
 				break;
 			}
