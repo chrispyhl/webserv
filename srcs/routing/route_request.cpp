@@ -42,10 +42,10 @@ Response route_request(const HttpRequest &req, const ListenAddress &addr, const 
 		// TODO: replace DEBUG answer
 		Response res(200);
 		res.addHeader("Content-Type", "text/plain");
-		res.setBody("DEBUG MSG; method: " + 
+		res.setBody("\nDEBUG MSG\n===\nmethod: " + 
 			req.get_method() + "; " + 
 			(!server.serverNames().empty() ? "server name: " + server.serverNames()[0] : "no server name") + 
-			"; location path: " + location.path());
+			"; location path: " + location.path() + "\n===\n\n");
 		return (res);
 	}
 	// not allowed!
