@@ -3,14 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
+/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/17 13:41:09 by chris            ###   ########.fr       */
+/*   Updated: 2026/11/20 19:34:59 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
+#include "route_request.hpp"
+#include "error_response.hpp"
 
 void	Server::mark_for_removal(int fd, std::vector<int>& fds_to_remove){
 	if(!vector_contains(fds_to_remove, fd))
@@ -71,11 +73,20 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
 				<< " Path: " << client.request.get_path() << RESET << std::endl;
 
-				const ServerConfig &server_conf = _config.selectServer(client.listen_address, client.request.get_header("Host"));
-				(void)server_conf; // TEMP, will use later
-				std::string response = "HTTP/1.0 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"; // TEMP RESPONSE
-				client.send_buffer.append(response);
+
+				// Response
+				Response	res = route_request(client.request, client.listen_address, _config);
+
+				std::cout << GREEN << client.request.get_method() << " " << client.request.get_path() << " -> " 
+				<< res.statusCode() << " " << get_status_text(res.statusCode()) << RESET << std::endl;
+
+				// As HTTP/1.0 Client should close after response
+				res.setCloseConnection(true); // Using response to tell the Client
+
+				client.send_buffer.append(res.toString());
 				poll_fds[i].events |= POLLOUT;
+
+				client.should_close = true; // Needed for my send_data loop -> Server has to close the Socket using 'mark_for_removal'
 
 				client.request.clear();
 				// if buffer is empty we break
@@ -84,10 +95,12 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				std::string	bad_request = "HTTP/1.0 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request";
-				client.send_buffer.append(bad_request);
+				Response	res_err = get_error_response(400);
+				res_err.setCloseConnection(true);
+				client.send_buffer.append(res_err.toString());
 				poll_fds[i].events |= POLLOUT;
 				client.should_close = true;
+				client.request.clear();
 				break;
 			}
 			else
@@ -98,10 +111,8 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 	else if (bytes_received == 0)
 		mark_for_removal(client_fd, fds_to_remove);
 	else{
-		if (errno != EWOULDBLOCK && errno != EAGAIN){
-			std::cout << RED << "recv failed! errno: " << errno << RESET << std::endl;
-			mark_for_removal(client_fd, fds_to_remove);
-		}
+		std::cout << RED << "recv failed! Closing connection. " << RESET << std::endl;
+		mark_for_removal(client_fd, fds_to_remove);
 	}
 }
 

@@ -6,17 +6,18 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/10 13:44:33 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/13 14:36:37 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/20 20:41:05 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
 
-HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0) {}
+HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0), _is_chunked(false), _chunk_remaining(0), _chunk_state(CHUNK_SIZE) {}
 
 HttpRequest::~HttpRequest() {}
 
 ParseState HttpRequest::get_state() const { return _state; }
+size_t	HttpRequest::get_content_length() const { return _content_length; }
 const std::string& HttpRequest::get_method() const { return _method; }
 const std::string& HttpRequest::get_path() const { return _path; }
 const std::string& HttpRequest::get_query() const { return _query; }
@@ -43,6 +44,9 @@ void HttpRequest::clear(){
 	_body.clear();
 	_state = STATE_REQUEST_LINE;
 	_content_length = 0;
+	_is_chunked = false;
+	_chunk_state = CHUNK_SIZE;
+	_chunk_remaining = 0;
 }
 
 // PARSE HELPERS
@@ -92,6 +96,13 @@ bool HttpRequest::parse_header_line(const std::string& line){
 
 	_headers[key] = value;
 
+	if (key == "transfer-encoding"){
+		if (value.empty())
+			return false;
+		else if (value.find("chunked") != std::string::npos)
+			_is_chunked = true;
+	}
+
 	if (key == "content-length"){
 
 		if (value.empty() || value.find('-') != std::string::npos || value.find_first_not_of("0123456789") != std::string::npos)
@@ -107,6 +118,11 @@ bool HttpRequest::parse_header_line(const std::string& line){
 }
 
 void	HttpRequest::parse_body(std::string &read_buffer){
+	if (_is_chunked == true){
+		parse_chunked_body(read_buffer);
+		return;
+	}
+
 	size_t	needed = _content_length - _body.size();
 	size_t	available = read_buffer.size();
 	size_t	to_copy = std::min(needed, available);
@@ -116,6 +132,78 @@ void	HttpRequest::parse_body(std::string &read_buffer){
 
 	if (_body.size() >= _content_length)
 		_state = STATE_COMPLETE;
+}
+
+void	HttpRequest::parse_chunked_body(std::string &read_buffer){
+	while (_state == STATE_BODY){
+		if (_chunk_state == CHUNK_SIZE){
+			size_t	pos = read_buffer.find("\r\n");
+			if (pos == std::string::npos)
+				return;
+			else{
+				std::string chunk_sized_string;
+				chunk_sized_string.append(read_buffer, 0, pos);
+				read_buffer.erase(0, pos + 2);
+				if (chunk_sized_string.empty() || chunk_sized_string.find('-') != std::string::npos || chunk_sized_string.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos){
+					_state = STATE_ERROR;
+					return;
+				}
+				size_t	i_chunk_size;
+				try{
+					i_chunk_size = std::stoul(chunk_sized_string, nullptr, 16);
+				}
+				catch (const std::exception&){
+					_state = STATE_ERROR;
+					return;
+				}
+				if (i_chunk_size == 0)
+					_chunk_state = CHUNK_TRAILER;
+				else{
+					_chunk_remaining = i_chunk_size;
+					_chunk_state = CHUNK_DATA;
+				}
+			}
+		}
+		else if (_chunk_state == CHUNK_DATA){
+			if (read_buffer.empty())
+				return;
+			else{
+				size_t	mini;
+				mini = std::min(_chunk_remaining, read_buffer.size());
+				_body.append(read_buffer, 0, mini);
+				read_buffer.erase(0, mini);
+				_chunk_remaining -= mini;
+				if (_chunk_remaining == 0)
+					_chunk_state = CHUNK_DATA_CRLF;
+			}
+		}
+		else if (_chunk_state == CHUNK_DATA_CRLF){
+			if (read_buffer.size() < 2)
+				return;
+			else if (read_buffer.substr(0, 2) == "\r\n"){
+				read_buffer.erase(0, 2);
+				_chunk_state = CHUNK_SIZE;
+			}
+			else{
+				_state = STATE_ERROR;
+				return;
+			}
+		}
+		else if (_chunk_state == CHUNK_TRAILER){
+			size_t	pos = read_buffer.find("\r\n");
+			if (pos == std::string::npos)
+				return;
+			else{
+				if (pos == 0){
+					read_buffer.erase(0, pos + 2);
+					_state = STATE_COMPLETE;
+					return;
+				}
+				else if (pos > 0)
+					read_buffer.erase(0, pos + 2);
+			}
+		}
+	}
 }
 
 // MAIN PARSE
@@ -139,7 +227,7 @@ ParseState HttpRequest::parse(std::string &read_buffer) {
 			}
 			else if (_state == STATE_HEADERS) {
 				if (line.empty()) { // End of headers
-					if (_content_length > 0)
+					if (_content_length > 0 || _is_chunked == true)
 						_state = STATE_BODY;
 					else
 						_state = STATE_COMPLETE;
