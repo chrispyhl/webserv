@@ -6,12 +6,13 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/19 14:49:23 by chris            ###   ########.fr       */
+/*   Updated: 2026/11/20 16:06:01 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
-#include "Response.hpp"
+#include "route_request.hpp"
+#include "error_response.hpp"
 
 void	Server::mark_for_removal(int fd, std::vector<int>& fds_to_remove){
 	if(!vector_contains(fds_to_remove, fd))
@@ -72,65 +73,15 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				std::cout <<  GREEN << "Request complete! Method: " << client.request.get_method() 
 				<< " Path: " << client.request.get_path() << RESET << std::endl;
 
-				const ServerConfig		&server_conf = _config.selectServer(client.listen_address, client.request.get_header("Host"));
-				const LocationConfig	&location_conf = server_conf.findLocation(client.request.get_path());
-
-
-				// PHASE 1 DEBUG LOG
-				std::cout << BLUE << "[Location Match] " << RESET << MAGENTA 
-				<< "Request Path: " << client.request.get_path()
-				<< " -> Matched Location: " << location_conf.path()
-				<< " (Root: " << location_conf.root()
-				<< ", Autoindex: " << (location_conf.autoIndex() ? "on" : "off")
-				<< ", MaxBody: " << location_conf.maxBodySize() << ")" << RESET << std::endl;
-				
-				// Test 1: Check if Body is too big
-				if (client.request.get_content_length() > location_conf.maxBodySize()){
-					std::cerr << RED << "Error: Request Body exceeds client_max_body_size" << RESET << std::endl;
-
-					Response	err_res;
-					err_res.set_status(413, "Request Entity Too Large");
-					err_res.set_body("413 Request Entity Too Large");
-					client.send_buffer.append(err_res.build());
-
-					poll_fds[i].events |= POLLOUT;
-					client.should_close = true;
-					client.request.clear();
-					break;
-				}
-
-				// Get real data path
-				std::string	req_path = client.request.get_path();
-				if (req_path == "/")
-					req_path = "/index.html"; // Standard startfile
-
-				std::string	file_path = location_conf.root() + req_path;
-
-				// Open File
-				std::ifstream	file(file_path, std::ios::binary);
 
 				// Response
-				Response	res;
+				Response	res = route_request(client.request, client.listen_address, _config);
 
-				if (!file.is_open()){
-					// ERROR 404 -- NOT FOUND
-					std::cerr << RED << "Error: File not found: " << file_path << RESET << std::endl;
-					res.set_status(404, "Not Found");
-					res.set_body("404 Not Found\r\n");
-				}
-				else{
-					std::string	content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-					res.set_status(200, "OK");
-					res.set_content_type(file_path);
-					res.set_body(content);
-				}
-
-				client.send_buffer.append(res.build());
+				client.send_buffer.append(res.toString());
 				poll_fds[i].events |= POLLOUT;
 
 				// As HTTP/1.0 Client should close after response
-				client.should_close = true;
+				client.should_close = res.closeConnection();
 
 				client.request.clear();
 				// if buffer is empty we break
@@ -139,12 +90,11 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				Response	bad_req;
-				bad_req.set_status(400, "Bad Request");
-				bad_req.set_body("Bad Request\r\n");
-				client.send_buffer.append(bad_req.build());
+				Response	res_err = get_error_response(400);
+				client.send_buffer.append(res_err.toString());
 				poll_fds[i].events |= POLLOUT;
-				client.should_close = true;
+				client.should_close = res_err.closeConnection();
+				client.request.clear();
 				break;
 			}
 			else
