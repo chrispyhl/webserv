@@ -55,7 +55,7 @@ void ConfigBuilder::warnAboutDuplicates(const Config &config) const
 
 static void warn_about_upload_without_post(const LocationConfig &location_config, const config::LocationDirective &location_directive)
 {
-	if (!location_config.uploadDirectory().empty() && (location_config.allowedMethods().find("POST") == location_config.allowedMethods().end()))
+	if (!location_config.uploadDirectory().empty() && (location_config.allowedMethods().count("POST") == 0))
 		std::cerr << "warn: \"upload_dir\" in location \"" << location_directive.directive.args[0] << "\" in line " << location_directive.path << " has no effect without \"POST\" in \"allow_methods\"\n";
 }
 
@@ -195,7 +195,7 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		else if (d.name == "cgi")
 		{
 			std::pair<std::string, std::string> handler = config::get_cgi_handler_pair(d);
-			if (location_config._cgiHandlers.find(handler.first) != location_config._cgiHandlers.end())
+			if (location_config._cgiHandlers.count(handler.first) != 0)
 				throw ConfigError("duplicate cgi extension \"" + handler.first + "\"", d.line);
 			location_config._cgiHandlers.insert(handler);
 		}
@@ -353,6 +353,17 @@ Config ConfigBuilder::build()
 
 	for (const Directive &d : _directives)
 		config._servers.push_back(buildServer(d));
+
+	// collect every distinct listen address once, so listenAddresses() can return a reference
+	for (const ServerConfig &s : config._servers)
+	{
+		for (const ListenAddress &a : s.listenAddresses())
+		{
+			// the == operator is overloaded for ListenAddresses, comparing both address and port and only returning true if both match!
+			if (!vector_contains(config._listenAddresses, a))
+				config._listenAddresses.push_back(a);
+		}
+	}
 
 	warnAboutDuplicates(config);
 
