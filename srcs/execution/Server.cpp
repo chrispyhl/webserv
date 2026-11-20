@@ -6,7 +6,7 @@
 /*   By: chris <chris@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/18 17:03:34 by chris            ###   ########.fr       */
+/*   Updated: 2026/11/19 14:49:23 by chris            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,7 +111,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 
 				// Response
 				Response	res;
-				
+
 				if (!file.is_open()){
 					// ERROR 404 -- NOT FOUND
 					std::cerr << RED << "Error: File not found: " << file_path << RESET << std::endl;
