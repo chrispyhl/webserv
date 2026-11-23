@@ -142,3 +142,11 @@ server {
 **21) directives without NGINX equivalent**
 - `upload_dir` and `cgi` are webserv's own directives; NGINX doesn't have those
 - `cgi EXTENSION [interpreter path]`: with an interpreter, the script is run by it; without, the script is executed directly
+
+**22) `root` (mixed root rule)**
+- partially emulated: subject and NGINX disagree on `root`
+- location with its own `root`: the location prefix is replaced (subject)
+  - `location /kapouet { root /tmp/www; }`: `/kapouet/pouic/toto/pouet` -> `/tmp/www/pouic/toto/pouet`
+- root inherited from the server: the full request path is appended (NGINX)
+  - `server { root ./www/main; location /files {} }`: `/files/a.txt` -> `./www/main/files/a.txt`
+- reason: always replacing would drop inheriting locations' files into one shared folder (`/files/a.txt` -> `./www/main/a.txt`)
