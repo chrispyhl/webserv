@@ -6,13 +6,13 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/10 13:44:33 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/23 16:22:45 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/23 17:37:16 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
 
-HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0), _is_chunked(false), _chunk_remaining(0), _chunk_state(CHUNK_SIZE), _max_body_size(0), _error_code(400) {}
+HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0), _is_chunked(false), _chunk_remaining(0), _chunk_state(CHUNK_SIZE), _max_body_size(0), _error_code(400), _header_bytes(0) {}
 
 HttpRequest::~HttpRequest() {}
 
@@ -58,6 +58,7 @@ void HttpRequest::clear(){
 	_chunk_remaining = 0;
 	_max_body_size = 0;
 	_error_code = 400;
+	_header_bytes = 0;
 }
 
 // PARSE HELPERS
@@ -79,6 +80,15 @@ bool HttpRequest::parse_request_line(const std::string& line){
 		_path = raw_uri;
 		_query.clear();
 	}
+	if (_version != "HTTP/1.0" && _version != "HTTP/1.1"){
+		_error_code = 505;
+		return false;
+	}
+	if (line.size() > 8192 || raw_uri.size() > 8192){ // 8192 ist just a example value (8KiB)
+		_error_code = 414;
+		_state = STATE_ERROR;
+		return false;
+	}
 	return true;
 }
 
@@ -96,16 +106,14 @@ bool HttpRequest::parse_header_line(const std::string& line){
 		key = key.substr(key_start, key_end - key_start + 1);
 	else
 		key.clear();
-
-	std::transform(key.begin(), key.end(), key.begin(), ::tolower); // use Chris function
-
-	size_t start = value.find_first_not_of(" \t");
-	if (start != std::string::npos)
-		value = value.substr(start);
+	size_t	value_start = value.find_first_not_of(" \t");
+	size_t	value_end = value.find_last_not_of(" \t");
+	if (value_start != std::string::npos && value_end != std::string::npos)
+		value = value.substr(value_start, value_end - value_start + 1);
 	else
 		value.clear();
 
-	_headers[key] = value;
+	std::transform(key.begin(), key.end(), key.begin(), ::tolower); // use Chris function
 
 	if (key == "transfer-encoding"){
 		if (value.empty())
@@ -115,16 +123,20 @@ bool HttpRequest::parse_header_line(const std::string& line){
 	}
 
 	if (key == "content-length"){
-
 		if (value.empty() || value.find('-') != std::string::npos || value.find_first_not_of("0123456789") != std::string::npos)
 			return false;
+		size_t	parsed_length = 0;
 		try{
-			_content_length = std::stoul(value);
-		} 
+			parsed_length = std::stoul(value);
+		}
 		catch (const std::exception&){
 			return false;
 		}
+		if (_headers.find("content-length") != _headers.end() && parsed_length != _content_length)
+			return false;
+		_content_length = parsed_length;
 	}
+	_headers[key] = value;
 	return true;
 }
 
@@ -265,6 +277,12 @@ ParseState HttpRequest::parse(std::string &read_buffer) {
 						_state = STATE_COMPLETE;
 				}
 				else {
+					_header_bytes += line.size() + 2;
+					if (_header_bytes > 8192){
+						_error_code = 431;
+						_state = STATE_ERROR;
+						break;
+					}
 					if (!parse_header_line(line)) {
 						_state = STATE_ERROR;
 						break;

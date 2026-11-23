@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/20 16:14:40 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/23 14:44:55 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/23 17:14:42 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,7 @@ class HttpRequest {
 		ChunkState							_chunk_state;
 		size_t								_max_body_size;
 		int									_error_code;
+		size_t								_header_bytes;
 
 		bool	parse_request_line(const std::string& line);
 		bool	parse_header_line(const std::string& line);
