@@ -6,13 +6,13 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/10 13:44:33 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 20:41:05 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/23 16:22:45 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
 
-HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0), _is_chunked(false), _chunk_remaining(0), _chunk_state(CHUNK_SIZE) {}
+HttpRequest::HttpRequest() : _state(STATE_REQUEST_LINE), _content_length(0), _is_chunked(false), _chunk_remaining(0), _chunk_state(CHUNK_SIZE), _max_body_size(0), _error_code(400) {}
 
 HttpRequest::~HttpRequest() {}
 
@@ -34,6 +34,15 @@ const std::string& HttpRequest::get_header(const std::string& key) const {
 		return it->second;
 	return empty;
 }
+void	HttpRequest::set_max_body_size(size_t max_size){
+	_max_body_size = max_size;
+}
+
+void	HttpRequest::start_body(){
+	_state = STATE_BODY;
+}
+
+int	HttpRequest::get_error_code() const{ return _error_code; }
 
 void HttpRequest::clear(){
 	_method.clear();
@@ -47,6 +56,8 @@ void HttpRequest::clear(){
 	_is_chunked = false;
 	_chunk_state = CHUNK_SIZE;
 	_chunk_remaining = 0;
+	_max_body_size = 0;
+	_error_code = 400;
 }
 
 // PARSE HELPERS
@@ -118,11 +129,15 @@ bool HttpRequest::parse_header_line(const std::string& line){
 }
 
 void	HttpRequest::parse_body(std::string &read_buffer){
+	if (_content_length > _max_body_size){
+		_error_code = 413;
+		_state = STATE_ERROR;
+		return;
+	}
 	if (_is_chunked == true){
 		parse_chunked_body(read_buffer);
 		return;
 	}
-
 	size_t	needed = _content_length - _body.size();
 	size_t	available = read_buffer.size();
 	size_t	to_copy = std::min(needed, available);
@@ -156,6 +171,16 @@ void	HttpRequest::parse_chunked_body(std::string &read_buffer){
 					_state = STATE_ERROR;
 					return;
 				}
+				if (_body.size() > _max_body_size){
+					_error_code = 413;
+					_state = STATE_ERROR;
+					return;
+				}
+				else if (i_chunk_size > _max_body_size - _body.size()){
+					_error_code = 413;
+					_state = STATE_ERROR;
+					return;
+				}
 				if (i_chunk_size == 0)
 					_chunk_state = CHUNK_TRAILER;
 				else{
@@ -170,6 +195,11 @@ void	HttpRequest::parse_chunked_body(std::string &read_buffer){
 			else{
 				size_t	mini;
 				mini = std::min(_chunk_remaining, read_buffer.size());
+				if (_body.size() >= _max_body_size || mini > _max_body_size - _body.size()){
+					_error_code = 413;
+					_state = STATE_ERROR;
+					return;
+				}
 				_body.append(read_buffer, 0, mini);
 				read_buffer.erase(0, mini);
 				_chunk_remaining -= mini;
@@ -227,8 +257,10 @@ ParseState HttpRequest::parse(std::string &read_buffer) {
 			}
 			else if (_state == STATE_HEADERS) {
 				if (line.empty()) { // End of headers
-					if (_content_length > 0 || _is_chunked == true)
-						_state = STATE_BODY;
+					if (_content_length > 0 || _is_chunked == true){
+						_state = STATE_HEADERS_COMPLETE;
+						break;
+					}
 					else
 						_state = STATE_COMPLETE;
 				}
@@ -240,7 +272,10 @@ ParseState HttpRequest::parse(std::string &read_buffer) {
 				}
 			}
 		}
-		if (_state == STATE_BODY) {
+		else if (_state == STATE_HEADERS_COMPLETE){
+			break;
+		}
+		else if (_state == STATE_BODY) {
 			parse_body(read_buffer);
 			if (_state != STATE_COMPLETE)
 				break; // Wait for more data

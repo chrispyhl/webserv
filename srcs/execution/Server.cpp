@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 19:34:59 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/23 14:43:25 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -89,19 +89,29 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				client.should_close = true; // Needed for my send_data loop -> Server has to close the Socket using 'mark_for_removal'
 
 				client.request.clear();
-				// if buffer is empty we break
-				if (client.read_buffer.empty())
-					break;
+				poll_fds[i].events &= ~POLLIN;
+				poll_fds[i].events |= POLLOUT;
+				break;
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				Response	res_err = get_error_response(400);
+				Response	res_err = get_error_response(client.request.get_error_code());
 				res_err.setCloseConnection(true);
 				client.send_buffer.append(res_err.toString());
 				poll_fds[i].events |= POLLOUT;
 				client.should_close = true;
 				client.request.clear();
+				poll_fds[i].events &= ~POLLIN;
+				poll_fds[i].events |= POLLOUT;
 				break;
+			}
+			else if (state == STATE_HEADERS_COMPLETE){
+				const ServerConfig &server = _config.selectServer(client.listen_address, client.request.get_header("Host"));
+				const LocationConfig &location = server.findLocation(client.request.get_path());
+				size_t	max_body_size = location.maxBodySize();
+
+				client.request.set_max_body_size(max_body_size);
+				client.request.start_body();
 			}
 			else
 				break;

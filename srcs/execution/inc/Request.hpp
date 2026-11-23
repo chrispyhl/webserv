@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/20 16:14:40 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 20:39:51 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/23 14:44:55 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 enum ParseState {
 	STATE_REQUEST_LINE,
 	STATE_HEADERS,
+	STATE_HEADERS_COMPLETE,
 	STATE_BODY,
 	STATE_COMPLETE,
 	STATE_ERROR
@@ -44,6 +45,8 @@ class HttpRequest {
 			CHUNK_TRAILER
 		};
 		ChunkState							_chunk_state;
+		size_t								_max_body_size;
+		int									_error_code;
 
 		bool	parse_request_line(const std::string& line);
 		bool	parse_header_line(const std::string& line);
@@ -65,6 +68,9 @@ class HttpRequest {
 		const std::string&							get_body() const;
 		const std::string&							get_header(const std::string& key) const;
 		const std::map<std::string, std::string>&	get_headers() const;
+		void										set_max_body_size(size_t max_size);
+		void										start_body();
+		int											get_error_code() const;
 
 		void	clear();
 };
