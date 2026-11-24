@@ -77,11 +77,11 @@ static std::string resolve_to_disk_path(const std::string &req_path, const Locat
 #include <iostream>
 #include <sstream>
 
-static Response get_get_response(const HttpRequest &req, const ServerConfig &server_config, const LocationConfig &location_config)
+static Response handle_get(const HttpRequest &req, const ServerConfig &server_config, const LocationConfig &location_config)
 {
 	std::string disk_path = resolve_to_disk_path(req.get_path(), location_config);
 	// if (!verify_disk_path_get(disk_path))
-	// 	return (get_error_response(404));
+	// 	return (build_error_response(404));
 	// TODO: replace DEBUG answer
 	Response res(200);
 	res.addHeader("Content-Type", "text/plain");
@@ -120,15 +120,15 @@ Response route_request(const HttpRequest &req, const ListenAddress &addr, const 
 	if (location_config.allowedMethods().count(req.get_method()) != 0)
 	{
 		if (req.get_method() == "GET")
-			return (get_get_response(req, server_config, location_config));
+			return (handle_get(req, server_config, location_config));
 		else
 			// TODO: handle other methods!
-			return (get_error_response(404));
+			return (build_error_response(404));
 	}
 	// not allowed!
 	else
 	{
-		Response res = get_error_response(405);
+		Response res = build_error_response(405);
 		// NOTE: usually, the error code and msg are enough for error responses; 405 is a special case: HTTP requires an Allow header to go with it
 		res.addHeader("Allow", build_method_header_value(location_config.allowedMethods()));
 		return (res);

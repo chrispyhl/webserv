@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <string>
 
-Response get_error_response(std::size_t error_code)
+Response build_error_response(std::size_t error_code)
 {
 	Response response(error_code);
 

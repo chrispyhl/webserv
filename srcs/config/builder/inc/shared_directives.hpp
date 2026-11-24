@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-// handlers for directives that are allowed at server AND location level
+// functions for parsing directives that are allowed at server AND location level
 namespace config
 {
 
@@ -21,11 +21,11 @@ struct LocationDirective
 		bool exact_match;
 };
 
-std::string get_root(const Directive &d);
-std::vector<std::string> get_index_files(const Directive &d);
-bool get_auto_index(const Directive &d);
-std::size_t get_max_body_size(const Directive &d);
-std::map<std::size_t, std::string> get_error_pages(const Directive &d);
-Return get_return(const Directive &d);
-LocationDirective get_location_directive(const Directive &d);
+std::string parse_root(const Directive &d);
+std::vector<std::string> parse_index_files(const Directive &d);
+bool parse_auto_index(const Directive &d);
+std::size_t parse_max_body_size(const Directive &d);
+std::map<std::size_t, std::string> parse_error_pages(const Directive &d);
+Return parse_return(const Directive &d);
+LocationDirective parse_location_directive(const Directive &d);
 }

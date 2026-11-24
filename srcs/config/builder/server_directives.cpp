@@ -21,7 +21,7 @@ static void invalid_port_throw(const Directive &d)
 	throw ConfigError("invalid port in \"" + d.args[0] + "\" of the \"listen\" directive", d.line);
 }
 
-static void verify_address_str(const std::string &address, const Directive &d)
+static void verify_address_string(const std::string &address, const Directive &d)
 {
 	if (std::count(address.begin(), address.end(), '.') != 3)
 		host_not_found_throw(d);
@@ -30,7 +30,7 @@ static void verify_address_str(const std::string &address, const Directive &d)
 			host_not_found_throw(d);
 }
 
-static void verify_address_nums(const std::vector<std::size_t> &address_nums, const Directive &d)
+static void verify_octets(const std::vector<std::size_t> &address_nums, const Directive &d)
 {
 	for (std::size_t n : address_nums)
 		if (n > 255)
@@ -49,7 +49,7 @@ static std::uint16_t port_str_to_uint16(const std::string &port, const Directive
 }
 
 // this helper turns strings into uint32_t and uint16_t, builds a ListenAddress struct and returns it
-static ListenAddress build_listenaddress(const std::string &address, const std::string &port, const Directive &d)
+static ListenAddress build_listen_address(const std::string &address, const std::string &port, const Directive &d)
 {
 	ListenAddress listen_address;
 
@@ -57,7 +57,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 		listen_address.address = 0;
 	else
 	{
-		verify_address_str(address, d);
+		verify_address_string(address, d);
 		std::size_t substr_start = 0;
 		std::size_t period_pos = address.find(".");
 		std::vector<std::string> octets_str;
@@ -78,7 +78,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 		std::vector<std::size_t> octets;
 		for (const std::string &s : octets_str)
 			octets.push_back(std::stoi(s));
-		verify_address_nums(octets, d);
+		verify_octets(octets, d);
 		listen_address.address = (octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3];
 	}
 
@@ -87,7 +87,7 @@ static ListenAddress build_listenaddress(const std::string &address, const std::
 	return (listen_address);
 }
 
-ListenAddress get_listen_address(const Directive &d)
+ListenAddress parse_listen_address(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() == 0 || d.args.size() > 1)
@@ -108,7 +108,7 @@ ListenAddress get_listen_address(const Directive &d)
 	{
 		// all digits: read as port
 		if (isdigit_string(d.args[0]))
-			listen_address = build_listenaddress("", d.args[0], d);
+			listen_address = build_listen_address("", d.args[0], d);
 		// otherwise: no port = not a valid address as per webserv's own definition (custom message)
 		else
 			throw ConfigError("no port in \"" + d.args[0] + "\" of the \"listen\" directive", d.line);
@@ -128,12 +128,12 @@ ListenAddress get_listen_address(const Directive &d)
 		// port is still obligatory
 		if (port.empty())
 			invalid_port_throw(d);
-		listen_address = build_listenaddress(address, port, d);
+		listen_address = build_listen_address(address, port, d);
 	}
 	return (listen_address);
 }
 
-std::vector<std::string> get_server_names(const Directive &d)
+std::vector<std::string> parse_server_names(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() == 0)

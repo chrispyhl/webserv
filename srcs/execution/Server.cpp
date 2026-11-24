@@ -95,7 +95,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				Response	res_err = get_error_response(400);
+				Response	res_err = build_error_response(400);
 				res_err.setCloseConnection(true);
 				client.send_buffer.append(res_err.toString());
 				poll_fds[i].events |= POLLOUT;

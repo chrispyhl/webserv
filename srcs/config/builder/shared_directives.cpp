@@ -17,7 +17,7 @@ static void invalid_return_code_throw(const Directive &d, const std::string &str
 	throw ConfigError("invalid return code \"" + str + "\"", d.line);
 }
 
-std::string get_root(const Directive &d)
+std::string parse_root(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() != 1)
@@ -25,7 +25,7 @@ std::string get_root(const Directive &d)
 	return (trim_trailing_forward_slashes(d.args[0]));
 }
 
-std::vector<std::string> get_index_files(const Directive &d)
+std::vector<std::string> parse_index_files(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() == 0)
@@ -36,7 +36,7 @@ std::vector<std::string> get_index_files(const Directive &d)
 	return (d.args);
 }
 
-bool get_auto_index(const Directive &d)
+bool parse_auto_index(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() != 1)
@@ -50,7 +50,7 @@ bool get_auto_index(const Directive &d)
 		throw ConfigError("invalid value \"" + d.args[0] + "\" in \"autoindex\" directive, it must be \"on\" or \"off\"", d.line);
 }
 
-std::size_t get_max_body_size(const Directive &d)
+std::size_t parse_max_body_size(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() != 1)
@@ -84,7 +84,7 @@ std::size_t get_max_body_size(const Directive &d)
 
 	try
 	{
-		max_body_size = str_to_size_t(str.substr(0, digits_length));
+		max_body_size = string_to_size_t(str.substr(0, digits_length));
 	}
 	catch (const std::invalid_argument &)
 	{
@@ -129,7 +129,7 @@ std::size_t get_max_body_size(const Directive &d)
 	throw ConfigError("\"client_max_body_size\" directive invalid value", d.line);
 }
 
-std::map<std::size_t, std::string> get_error_pages(const Directive &d)
+std::map<std::size_t, std::string> parse_error_pages(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() < 2)
@@ -139,7 +139,7 @@ std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 	{
 		try
 		{
-			std::size_t code_nbr = str_to_size_t(d.args[i]);
+			std::size_t code_nbr = string_to_size_t(d.args[i]);
 			if (code_nbr < 300 || code_nbr > 599)
 				throw ConfigError("value \"" + d.args[i] + "\" must be between 300 and 599", d.line);
 			if (code_nbr == 499)
@@ -160,13 +160,13 @@ std::map<std::size_t, std::string> get_error_pages(const Directive &d)
 	return (error_pages);
 }
 
-static std::size_t get_return_code(const Directive &d)
+static std::size_t parse_return_code(const Directive &d)
 {
 	std::string str = d.args[0];
 	std::size_t code;
 	try
 	{
-		code = str_to_size_t(str);
+		code = string_to_size_t(str);
 		// code needs to be between (and including) 0 and 999
 		// can't be negative due to isdigit_string() check before, so only 999 needs guarding
 		if (code > 999)
@@ -179,7 +179,7 @@ static std::size_t get_return_code(const Directive &d)
 	return (code);
 }
 
-Return get_return(const Directive &d)
+Return parse_return(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() < 1 || d.args.size() > 2)
@@ -192,7 +192,7 @@ Return get_return(const Directive &d)
 	{
 		if (isdigit_string(d.args[0]))
 		{
-			std::size_t code = get_return_code(d);
+			std::size_t code = parse_return_code(d);
 			result.code = code;
 			result.target = "";
 		}
@@ -211,7 +211,7 @@ Return get_return(const Directive &d)
 	// 2 arg scenario: first must be code, second is target
 	else if (isdigit_string(d.args[0]))
 	{
-		std::size_t code = get_return_code(d);
+		std::size_t code = parse_return_code(d);
 		std::string target = d.args[1];
 		result.code = code;
 		result.target = target;
@@ -221,7 +221,7 @@ Return get_return(const Directive &d)
 	return (result);
 }
 
-static bool get_location_modifier(const Directive &d)
+static bool parse_location_modifier(const Directive &d)
 {
 	std::vector<std::string> unsupported_modifiers = { "~", "~*", "^~" };
 	std::string modifier = d.args[0];
@@ -235,7 +235,7 @@ static bool get_location_modifier(const Directive &d)
 
 // exact_match is used by caller to build LocationDirective
 // also serves as a toggle for literal paths here
-static std::string get_location_path(const Directive &d, const std::string &str, bool &exact_match)
+static std::string parse_location_path(const Directive &d, const std::string &str, bool &exact_match)
 {
 	std::string path;
 
@@ -265,7 +265,7 @@ static std::string get_location_path(const Directive &d, const std::string &str,
 	return (path);
 }
 
-LocationDirective get_location_directive(const Directive &d)
+LocationDirective parse_location_directive(const Directive &d)
 {
 	if (!d.children.has_value())
 		throw ConfigError("directive \"location\" has no opening \"{\"", d.line);
@@ -277,11 +277,11 @@ LocationDirective get_location_directive(const Directive &d)
 
 	if (d.args.size() == 2)
 	{
-		exact_match = get_location_modifier(d);
-		path = get_location_path(d, d.args[1], exact_match);
+		exact_match = parse_location_modifier(d);
+		path = parse_location_path(d, d.args[1], exact_match);
 	}
 	else
-		path = get_location_path(d, d.args[0], exact_match);
+		path = parse_location_path(d, d.args[0], exact_match);
 
 	return (LocationDirective { d, path, exact_match });
 }
