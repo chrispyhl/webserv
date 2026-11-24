@@ -50,8 +50,9 @@ SRC =	$(SRC_DIR)/main.cpp \
 		$(EXEC_DIR)/Socket.cpp \
 		$(ROUT_DIR)/Response.cpp \
 		$(ROUT_DIR)/route_request.cpp \
-		$(ROUT_DIR)/error_response.cpp
-
+		$(ROUT_DIR)/error_response.cpp \
+		$(ROUT_DIR)/handle_get.cpp \
+		$(ROUT_DIR)/handle_helpers.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
 DEP = $(OBJ:.o=.d)
