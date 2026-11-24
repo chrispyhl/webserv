@@ -4,13 +4,14 @@
 
 #include <string>
 
-enum DiskPathTarget 
+enum DiskPathTarget
 {
 	IS_FILE,
 	IS_DIR,
 	IS_OTHER,
 	NOT_FOUND,
-	NO_PERM
+	NO_PERM,
+	OTHER_ERR
 };
 
 std::string resolve_to_disk_path(const std::string &req_path, const LocationConfig &location_config);

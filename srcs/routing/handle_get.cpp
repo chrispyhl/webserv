@@ -36,6 +36,8 @@ Response handle_get(const HttpRequest &req, const ServerConfig &server_config, c
 		return (build_error_response(404));
 	if (target_type == NO_PERM)
 		return (build_error_response(405));
+	if (target_type == OTHER_ERR)
+		return (build_error_response(400));
 	if (target_type == IS_FILE)
 		return (handle_get_file(disk_path, req, server_config, location_config));
 	// else if (target_type == IS_DIR)

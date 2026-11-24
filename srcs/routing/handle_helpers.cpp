@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <string>
+#include <system_error>
 
 // to be used to find the actual server disk locations of files and directories targeted by GET and DELETE methods
 std::string resolve_to_disk_path(const std::string &req_path, const LocationConfig &location_config)
@@ -56,20 +57,29 @@ std::string resolve_to_disk_path(const std::string &req_path, const LocationConf
 
 DiskPathTarget identify_disk_path_target(const std::string &disk_path)
 {
-	// optional object that stores parameter-output of status check (would throw without it)
+	// object that stores parameter-output of status check (would throw without it)
 	std::error_code ec;
 	// filesystem version of the disk path
 	std::filesystem::path path(disk_path);
-	// complex method of a complex class; see cppreference (std::filesystem::status)
+	// holds the type of what's at the path; status.type() == none + ec set if it couldn't even look
 	std::filesystem::file_status status = std::filesystem::status(path, ec);
-	
-	if (status.type() == std::filesystem::file_type::not_found)
-		return (NOT_FOUND);
-	if (status.type() == std::filesystem::file_type::none && ec == std::errc::permission_denied)
-		return (NO_PERM);
-	if (status.type() == std::filesystem::file_type::regular)
-		return (IS_FILE);
-	if (status.type() == std::filesystem::file_type::directory)
-		return (IS_DIR);
-	return (IS_OTHER);
+	std::filesystem::file_type status_type = status.type();
+
+	switch (status_type)
+	{
+		case (std::filesystem::file_type::not_found):
+			return (NOT_FOUND);
+		case (std::filesystem::file_type::none):
+		{
+			if (ec == std::errc::permission_denied)
+				return (NO_PERM);
+			return (OTHER_ERR); // couldn't even look for some other reason than "no permission"
+		}
+		case (std::filesystem::file_type::regular):
+			return (IS_FILE);
+		case (std::filesystem::file_type::directory):
+			return (IS_DIR);
+		default:
+			return (IS_OTHER); // something other than a file or folder, such as a device or socket
+	}
 }
