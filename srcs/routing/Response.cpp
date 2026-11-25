@@ -72,13 +72,15 @@ void Response::setStatusCode(std::size_t status_code)
 // new headers are simply added
 void Response::addHeader(const std::string &name, const std::string &value)
 {
-	_headers[name] = value;
+	_headers[tolower_string(name)] = value;
 }
 
 // replaces all stored headers
 void Response::setHeaders(const std::map<std::string, std::string> &headers)
 {
-	_headers = headers;
+	_headers.clear();
+	for (const auto &p : headers)
+		addHeader(tolower_string(p.first), p.second);
 }
 
 void Response::setBody(const std::string &body)
