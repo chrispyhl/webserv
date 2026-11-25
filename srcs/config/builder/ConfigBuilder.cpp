@@ -56,7 +56,7 @@ void ConfigBuilder::warnAboutDuplicates(const Config &config) const
 static void warn_about_upload_without_post(const LocationConfig &location_config, const config::LocationDirective &location_directive)
 {
 	if (!location_config.uploadDirectory().empty() && (location_config.allowedMethods().count("POST") == 0))
-		std::cerr << "warn: \"upload_dir\" in location \"" << location_directive.directive.args[0] << "\" in line " << location_directive.path << " has no effect without \"POST\" in \"allow_methods\"\n";
+		std::cerr << "warn: \"upload_dir\" in location \"" << location_directive.path << "\" in line " << location_directive.directive.line << " has no effect without \"POST\" in \"allow_methods\"\n";
 }
 
 void ConfigBuilder::mergeLocationInheritance(LocationConfig &location_config, const BlockValues &block_values, const BlockValues &inherited_values) const
