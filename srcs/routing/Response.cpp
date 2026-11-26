@@ -23,6 +23,7 @@ static const std::map<std::size_t, std::string> CODE_CATALOGUE = {
 	{ 414, "URI Too Long" },
 	{ 431, "Request Header Fields Too Large" },
 	{ 500, "Internal Server Error" },
+	{ 501, "Not Implemented" }, 
 	{ 502, "Bad Gateway" },
 	{ 504, "Gateway Timeout" },
 	{ 505, "HTTP Version Not Supported" }
