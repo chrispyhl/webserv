@@ -6,25 +6,34 @@
 #include "error_response.hpp"
 #include "handle_helpers.hpp"
 
-#include <fstream>
+#include <fstream> // for std::ifstream
+#include <sstream> // for std::ostringstream
+#include <string>
 
-// for debug print; TODO: delete when done
+// for debug print in handle_get(); TODO: delete when done
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 
-static Response handle_get_file(const std::string &disk_path, const HttpRequest &req, const ServerConfig &server_config, const LocationConfig &location_config)
+static Response handle_get_file(const std::string &disk_path)
 {
-	// check if readable
-	std::ifstream filestream(disk_path);
-	// std::ifstreams destructor closes the FD automatically; no filestream.close() needed!
+	// open filestream in binary mode
+	std::ifstream filestream(disk_path, std::ios_base::binary);
+	// check if readable (catches "chmod 000")
 	if (!filestream.is_open())
 		return (build_error_response(403));
 
+	// every stream has internal buffer object; filestream can write its whole content into std::ostringstream's buffer with ">>"
+	std::ostringstream buffer_dump;
+	filestream >> buffer_dump.rdbuf();
+	// if something went wrong (like disk error) while reading, filestream stops before the end of the file and its eof flag stays unset
+	// extremely rare, but checked here anyway
+	if (!filestream.eof())
+		return (build_error_response(500));
+
 	Response res(200);
-	(void)req;
-	(void)server_config;
-	(void)location_config;
+	res.addHeader("content-type", get_content_type(disk_path));
+	res.setBody(buffer_dump.str());
+
 	return (res);
 }
 
@@ -39,7 +48,7 @@ Response handle_get(const HttpRequest &req, const ServerConfig &server_config, c
 	if (target_type == OTHER_ERR)
 		return (build_error_response(500));
 	if (target_type == IS_FILE)
-		return (handle_get_file(disk_path, req, server_config, location_config));
+		return (handle_get_file(disk_path));
 	// else if (target_type == IS_DIR)
 	// {
 	// }
