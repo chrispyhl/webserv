@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/13 14:28:56 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 16:14:26 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/25 12:06:43 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,8 @@
 #include <cerrno>
 
 #include <algorithm>
+
+#include <ctime>
 
 #include "utils.hpp"
 
