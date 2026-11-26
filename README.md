@@ -150,3 +150,9 @@ server {
 - root inherited from the server: the full request path is appended (NGINX)
   - `server { root ./www/main; location /files {} }`: `/files/a.txt` -> `./www/main/files/a.txt`
 - reason: always replacing would drop inheriting locations' files into one shared folder (`/files/a.txt` -> `./www/main/a.txt`)
+
+**23) response header names**
+- not emulated: NGINX sends capitalized header names (`Content-Type`)
+- webserv sends all header names in lowercase (`content-type`)
+- HTTP treats header names as case-insensitive, so both are valid
+- reason: header names are stored in lowercase, so the same header can't end up twice under different spellings (`Content-Type` + `content-type` are duplicates for webserv)
