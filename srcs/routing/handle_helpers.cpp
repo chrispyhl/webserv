@@ -1,10 +1,28 @@
 #include "handle_helpers.hpp"
 
 #include "LocationConfig.hpp"
+#include "utils.hpp"
 
 #include <filesystem>
+#include <map>
 #include <string>
 #include <system_error>
+
+static const std::map<std::string, std::string> EXTENSION_CATALOGUE = {
+	{ ".html", "text/html" },
+	{ ".htm", "text/html" },
+	{ ".css", "text/css" },
+	{ ".js", "text/javascript" },
+	{ ".txt", "text/plain" },
+	{ ".json", "application/json" },
+	{ ".png", "image/png" },
+	{ ".jpg", "image/jpeg" },
+	{ ".jpeg", "image/jpeg" },
+	{ ".gif", "image/gif" },
+	{ ".svg", "image/svg+xml" },
+	{ ".ico", "image/x-icon" },
+	{ ".pdf", "application/pdf" }
+};
 
 // to be used to find the actual server disk locations of files and directories targeted by GET and DELETE methods
 std::string resolve_to_disk_path(const std::string &req_path, const LocationConfig &location_config)
@@ -82,4 +100,19 @@ DiskPathTarget identify_disk_path_target(const std::string &disk_path)
 		default:
 			return (IS_OTHER); // something other than a file or folder, such as a device or socket
 	}
+}
+
+std::string get_content_type(const std::string &disk_path)
+{
+	// filesystem has .extension() method that returns extension (including dot)
+	// method is aware of traps like ".hiddenfile" and "./path.example/file"
+	std::filesystem::path path(disk_path);
+	std::string extension = tolower_string(path.extension().string());
+
+	auto res_it = EXTENSION_CATALOGUE.find(extension);
+	// fallback: default MIME (Multipurpose Internet Mail Extensions) type for unknown files
+	if (res_it == EXTENSION_CATALOGUE.end())
+		return ("application/octet-stream");
+	else
+		return (res_it->second);
 }
