@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:40 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 16:14:19 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/25 12:26:04 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ class Server {
 		void	receive_data(size_t i, std::vector<int>& fds_to_remove);
 		void	send_data(size_t i, std::vector<int>& fds_to_remove);
 		void	cleanup_fds(std::vector<int>& fds_to_remove);
+		void	check_timeouts(std::vector<int>& fds_to_remove);
 
 	public:
 		explicit	Server(const Config &config);

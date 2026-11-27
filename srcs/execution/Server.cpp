@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/20 19:34:59 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/26 13:49:46 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,37 @@
 void	Server::mark_for_removal(int fd, std::vector<int>& fds_to_remove){
 	if(!vector_contains(fds_to_remove, fd))
 		fds_to_remove.push_back(fd);
+}
+
+void	Server::check_timeouts(std::vector<int>& fds_to_remove){
+	time_t			now = std::time(nullptr);
+	const time_t	timeout_sec = 30;
+	
+	for (auto &pair : clients){
+		int		client_fd = pair.first;
+		Client	&client = pair.second;
+
+		if (now - client.last_activity >= timeout_sec){
+			if (!client.should_close){
+				std::cerr << YELLOW << "Client timeout (408) on fd: " << client_fd << RESET << std::endl;
+				Response	res_timeout = get_error_response(408);
+				res_timeout.setCloseConnection(true);
+				client.send_buffer.append(res_timeout.toString());
+				client.should_close = true;
+				client.request.clear();
+
+				for (size_t j = 0; j < poll_fds.size(); ++j){
+					if (poll_fds[j].fd == client_fd){
+						poll_fds[j].events &= ~POLLIN;
+						poll_fds[j].events |= POLLOUT;
+						break;
+					}
+				}
+			}
+			else
+				mark_for_removal(client_fd, fds_to_remove);
+		}
+	}
 }
 
 Server::Server(const Config &config) : _config(config) {
@@ -63,6 +94,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 	if (bytes_received > 0){
 		buffer[bytes_received] = '\0';
 		Client &client = clients.at(client_fd);
+		client.last_activity = std::time(nullptr);
 
 		client.read_buffer.append(buffer, bytes_received);
 
@@ -89,19 +121,28 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 				client.should_close = true; // Needed for my send_data loop -> Server has to close the Socket using 'mark_for_removal'
 
 				client.request.clear();
-				// if buffer is empty we break
-				if (client.read_buffer.empty())
-					break;
+				poll_fds[i].events &= ~POLLIN;
+				poll_fds[i].events |= POLLOUT;
+				break;
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				Response	res_err = get_error_response(400);
+				Response	res_err = get_error_response(client.request.get_error_code());
 				res_err.setCloseConnection(true);
 				client.send_buffer.append(res_err.toString());
-				poll_fds[i].events |= POLLOUT;
 				client.should_close = true;
 				client.request.clear();
+				poll_fds[i].events &= ~POLLIN;
+				poll_fds[i].events |= POLLOUT;
 				break;
+			}
+			else if (state == STATE_HEADERS_COMPLETE){
+				const ServerConfig &server = _config.selectServer(client.listen_address, client.request.get_header("Host"));
+				const LocationConfig &location = server.findLocation(client.request.get_path());
+				size_t	max_body_size = location.maxBodySize();
+
+				client.request.set_max_body_size(max_body_size);
+				client.request.start_body();
 			}
 			else
 				break;
@@ -123,6 +164,7 @@ void	Server::send_data(size_t i, std::vector<int>& fds_to_remove){
 	if (!client.send_buffer.empty()){
 		ssize_t bytes_sent = send(client_fd, client.send_buffer.data(), client.send_buffer.size(), 0);
 		if (bytes_sent > 0){
+			client.last_activity = std::time(nullptr);
 			client.send_buffer.erase(0, bytes_sent);
 		}
 		else if (bytes_sent < 0){
@@ -153,7 +195,7 @@ void	Server::cleanup_fds(std::vector<int>& fds_to_remove){
 
 void	Server::poll_loop(void){
 	while (!g_interrupted){
-		int	ret = poll(poll_fds.data(), poll_fds.size(), -1);
+		int	ret = poll(poll_fds.data(), poll_fds.size(), 1000);
 		if (ret < 0){
 			if (errno == EINTR || g_interrupted){
 				std::cout << YELLOW << "\nServer interupted by signal. Shutting down..." << RESET << std::endl;
@@ -188,6 +230,7 @@ void	Server::poll_loop(void){
 				continue;
 			}
 		}
+		check_timeouts(fds_to_remove);
 		cleanup_fds(fds_to_remove);
 	}
 }

@@ -23,9 +23,10 @@ struct Client {
 	std::string		read_buffer;
 	HttpRequest		request;
 	bool			should_close;
+	time_t			last_activity;
 	ListenAddress	listen_address;
 
-	explicit Client(int fd, ListenAddress la) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false), listen_address(la) {}
+	explicit Client(int fd, ListenAddress la) : socket(fd), send_buffer(""), read_buffer(""), request(), should_close(false), last_activity(std::time(nullptr)), listen_address(la) {}
 };
 
 #endif
