@@ -1,6 +1,10 @@
-/docs/craabe/
 /tests/
 /obj/
 /webserv
-/.vscode/
 configs/unopenable.conf
+
+# craabe specific stuff
+/docs/craabe/
+/.vscode/
+/www/
+big.bin
