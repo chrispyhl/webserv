@@ -30,7 +30,7 @@ Response route_request(const HttpRequest &req, const ListenAddress &addr, const 
 	// find relevant server
 	const ServerConfig &server_config = config.selectServer(addr, req.get_header("Host"));
 
-	// TODO: server's "return", path cleanup
+	// TODO: server's "return"
 
 	// find relevant location
 	const LocationConfig &location_config = server_config.findLocation(req.get_path());
