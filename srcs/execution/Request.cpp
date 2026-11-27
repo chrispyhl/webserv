@@ -6,7 +6,7 @@
 /*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/10 13:44:33 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/26 15:57:58 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/27 10:59:13 by cpohl            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ void HttpRequest::clear(){
 	_header_bytes = 0;
 }
 
-bool	normalize_path(const std::string &raw, std::string &out){
+static bool	normalize_path(const std::string &raw, std::string &out){
 	size_t		i = 0;
 	std::string	decoded;
 
@@ -129,7 +129,7 @@ bool HttpRequest::parse_request_line(const std::string& line){
 		_error_code = 414;
 		return false;
 	}
-	if (_version != "HTTP/1.0" && _version != "HTTP/1.1"){
+	if (_version != "HTTP/1.0" && _version != "HTTP/1.1" && _version.rfind("HTTP/", 0) == 0){ // starting from pos 0 check for HTTP/
 		_error_code = 505;
 		return false;
 	}
@@ -141,6 +141,10 @@ bool HttpRequest::parse_request_line(const std::string& line){
 	else{
 		_raw_path = raw_uri;
 		_query.clear();
+	}
+	if (_raw_path.empty() || _raw_path[0] != '/'){
+		_error_code = 400;
+		return false;
 	}
 	if (!normalize_path(_raw_path, _path)){
 		_error_code = 400;
