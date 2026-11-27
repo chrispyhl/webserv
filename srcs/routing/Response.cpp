@@ -23,6 +23,7 @@ static const std::map<std::size_t, std::string> CODE_CATALOGUE = {
 	{ 414, "URI Too Long" },
 	{ 431, "Request Header Fields Too Large" },
 	{ 500, "Internal Server Error" },
+	{ 501, "Not Implemented" }, 
 	{ 502, "Bad Gateway" },
 	{ 504, "Gateway Timeout" },
 	{ 505, "HTTP Version Not Supported" }
@@ -43,17 +44,17 @@ std::string Response::toString() const
 	// headers
 	for (const std::pair<const std::string, std::string> &h : _headers)
 	{
-		// some headers may submit their own "Content-Length" line; those must be filtered out here
-		// same goes for "Connection:" lines
-		std::string header_name = tolower_string(h.first);
+		// some headers may submit their own "content-length" line; those must be filtered out here
+		// same goes for "connection:" lines
+		std::string header_name = h.first; // guaranteed to be lowercase'd by Request builder
 		if (header_name != "content-length" && header_name != "connection")
 			str += h.first + ": " + h.second + "\r\n";
 	}
 	// body size
-	str += "Content-Length: " + std::to_string(_body.size()) + "\r\n";
+	str += "content-length: " + std::to_string(_body.size()) + "\r\n";
 	// close connection?
 	if (_closeConnection)
-		str += "Connection: close\r\n";
+		str += "connection: close\r\n";
 	// empty line
 	str += "\r\n";
 	// body
@@ -72,13 +73,15 @@ void Response::setStatusCode(std::size_t status_code)
 // new headers are simply added
 void Response::addHeader(const std::string &name, const std::string &value)
 {
-	_headers[name] = value;
+	_headers[tolower_string(name)] = value;
 }
 
 // replaces all stored headers
 void Response::setHeaders(const std::map<std::string, std::string> &headers)
 {
-	_headers = headers;
+	_headers.clear();
+	for (const auto &p : headers)
+		addHeader(p.first, p.second); // .first is guaranteed to be lowercaed by Request builder
 }
 
 void Response::setBody(const std::string &body)

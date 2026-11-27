@@ -7,6 +7,7 @@
 #include "Response.hpp"
 #include "ServerConfig.hpp"
 #include "error_response.hpp"
+#include "handle_get.hpp"
 
 #include <set>
 #include <string>
@@ -23,36 +24,35 @@ static std::string build_method_header_value(const std::set<std::string> &allowe
 	return (header);
 }
 
+
 Response route_request(const HttpRequest &req, const ListenAddress &addr, const Config &config)
 {
 	// find relevant server
-	const ServerConfig &server = config.selectServer(addr, req.get_header("Host"));
+	const ServerConfig &server_config = config.selectServer(addr, req.get_header("Host"));
 
 	// TODO: server's "return", path cleanup
 
 	// find relevant location
-	const LocationConfig &location = server.findLocation(req.get_path());
+	const LocationConfig &location_config = server_config.findLocation(req.get_path());
 
 	// TODO: location's "return"
 
 	// check method
 	// allowed!
-	if (location.allowedMethods().count(req.get_method()) != 0)
+	if (location_config.allowedMethods().count(req.get_method()) != 0)
 	{
-		// TODO: replace DEBUG answer
-		Response res(200);
-		res.addHeader("Content-Type", "text/plain");
-		res.setBody("\nDEBUG MSG\n===\nmethod: " + 
-			req.get_method() + "; " + 
-			(!server.serverNames().empty() ? "server name: " + server.serverNames()[0] : "no server name") + 
-			"; location path: " + location.path() + "\n===\n\n");
-		return (res);
+		if (req.get_method() == "GET")
+			return (handle_get(req, server_config, location_config));
+		else
+			// TODO: handle other methods!
+			return (build_error_response(404));
 	}
 	// not allowed!
 	else
 	{
-		Response res = get_error_response(405);
-		res.addHeader("Allow", build_method_header_value(location.allowedMethods()));
+		Response res = build_error_response(405);
+		// NOTE: usually, the error code and msg are enough for error responses; 405 is a special case: HTTP requires an Allow header to go with it
+		res.addHeader("Allow", build_method_header_value(location_config.allowedMethods()));
 		return (res);
 	}
 }

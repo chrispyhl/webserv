@@ -16,8 +16,8 @@ class Response
 
 		HTTP/1.0 CODE STATUS_TEXT\r\n
 		Name: value\r\n				(one line per stored header)
-		Content-Length: BODY_SIZE\r\n
-		Connection: close\r\n		(only if closeConnection() is true)
+		content-length: BODY_SIZE\r\n
+		connection: close\r\n		(only if closeConnection() is true)
 		\r\n						(empty line: end of the headers)
 		BODY
 		

@@ -12,7 +12,7 @@ namespace config
 
 static const std::vector<std::string> SUPPORTED_METHODS = { "GET", "POST", "DELETE" };
 
-std::set<std::string> get_allowed_methods(const Directive &d)
+std::set<std::string> parse_allowed_methods(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() == 0)
@@ -31,7 +31,7 @@ std::set<std::string> get_allowed_methods(const Directive &d)
 	return (allowed_methods);
 }
 
-std::string get_upload_directory(const Directive &d)
+std::string parse_upload_directory(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() != 1)
@@ -40,7 +40,7 @@ std::string get_upload_directory(const Directive &d)
 	return (trim_trailing_forward_slashes(d.args[0]));
 }
 
-std::pair<std::string, std::string> get_cgi_handler_pair(const Directive &d)
+std::pair<std::string, std::string> parse_cgi_handler_pair(const Directive &d)
 {
 	check_for_illegal_block(d);
 	if (d.args.size() == 0 || d.args.size() > 2)

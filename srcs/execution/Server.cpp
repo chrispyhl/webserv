@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cpohl <cpohl@student.42heilbronn.de>       +#+  +:+       +#+        */
+/*   By: craabe <craabe@42>                         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/10/20 17:26:32 by cpohl             #+#    #+#             */
-/*   Updated: 2026/11/26 13:49:46 by cpohl            ###   ########.fr       */
+/*   Updated: 2026/11/27 11:16:19 by craabe           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,7 @@ void	Server::check_timeouts(std::vector<int>& fds_to_remove){
 		if (now - client.last_activity >= timeout_sec){
 			if (!client.should_close){
 				std::cerr << YELLOW << "Client timeout (408) on fd: " << client_fd << RESET << std::endl;
-				Response	res_timeout = get_error_response(408);
+				Response	res_timeout = build_error_response(408);
 				res_timeout.setCloseConnection(true);
 				client.send_buffer.append(res_timeout.toString());
 				client.should_close = true;
@@ -127,7 +127,7 @@ void	Server::receive_data(size_t i, std::vector<int>& fds_to_remove){
 			}
 			else if (state == STATE_ERROR){
 				std::cerr << RED << "HTTP Parse Error! Closing connection." << RESET << std::endl;
-				Response	res_err = get_error_response(client.request.get_error_code());
+				Response	res_err = build_error_response(client.request.get_error_code());
 				res_err.setCloseConnection(true);
 				client.send_buffer.append(res_err.toString());
 				client.should_close = true;

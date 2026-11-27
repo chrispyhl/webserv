@@ -56,7 +56,7 @@ void ConfigBuilder::warnAboutDuplicates(const Config &config) const
 static void warn_about_upload_without_post(const LocationConfig &location_config, const config::LocationDirective &location_directive)
 {
 	if (!location_config.uploadDirectory().empty() && (location_config.allowedMethods().count("POST") == 0))
-		std::cerr << "warn: \"upload_dir\" in location \"" << location_directive.directive.args[0] << "\" in line " << location_directive.path << " has no effect without \"POST\" in \"allow_methods\"\n";
+		std::cerr << "warn: \"upload_dir\" in location \"" << location_directive.path << "\" in line " << location_directive.directive.line << " has no effect without \"POST\" in \"allow_methods\"\n";
 }
 
 void ConfigBuilder::mergeLocationInheritance(LocationConfig &location_config, const BlockValues &block_values, const BlockValues &inherited_values) const
@@ -128,14 +128,14 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		// ===SHARED DIRECTIVES===
 		if (d.name == "root")
 		{
-			std::string root = config::get_root(d);
+			std::string root = config::parse_root(d);
 			if (block_values.root.has_value())
 				config::duplicate_throw(d);
 			block_values.root = root;
 		}
 		else if (d.name == "index")
 		{
-			std::vector<std::string> index_files = config::get_index_files(d);
+			std::vector<std::string> index_files = config::parse_index_files(d);
 			// multiple occurrences of "index" in a location block are allowed
 			// can't .insert() on an optional without value
 			if (!block_values.index_files.has_value())
@@ -145,21 +145,21 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		}
 		else if (d.name == "autoindex")
 		{
-			bool auto_index = config::get_auto_index(d);
+			bool auto_index = config::parse_auto_index(d);
 			if (block_values.auto_index.has_value())
 				config::duplicate_throw(d);
 			block_values.auto_index = auto_index;
 		}
 		else if (d.name == "client_max_body_size")
 		{
-			std::size_t max_body_size = config::get_max_body_size(d);
+			std::size_t max_body_size = config::parse_max_body_size(d);
 			if (block_values.max_body_size.has_value())
 				config::duplicate_throw(d);
 			block_values.max_body_size = max_body_size;
 		}
 		else if (d.name == "error_page")
 		{
-			std::map<std::size_t, std::string> error_pages = config::get_error_pages(d);
+			std::map<std::size_t, std::string> error_pages = config::parse_error_pages(d);
 			// multiple occurrences of "error_page" in a location block are allowed
 			// can't .insert() on an optional without value
 			if (!block_values.error_pages.has_value())
@@ -172,7 +172,7 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		// server-level return directives are not inherited by the location so this goes directly into this function's result
 		else if (d.name == "return")
 		{
-			Return return_directive = config::get_return(d);
+			Return return_directive = config::parse_return(d);
 			// nginx only uses the first mention of "return", ignores all others
 			if (!location_config._returnDirective.has_value())
 				location_config._returnDirective = return_directive;
@@ -180,21 +180,21 @@ LocationConfig ConfigBuilder::buildLocation(const config::LocationDirective &loc
 		// ===LOCATION-ONLY DIRECTIVES===
 		else if (d.name == "allow_methods")
 		{
-			std::set<std::string> allowed_methods = config::get_allowed_methods(d);
+			std::set<std::string> allowed_methods = config::parse_allowed_methods(d);
 			if (!location_config._allowedMethods.empty())
 				config::duplicate_throw(d);
 			location_config._allowedMethods = allowed_methods;
 		}
 		else if (d.name == "upload_dir")
 		{
-			std::string upload_directory = config::get_upload_directory(d);
+			std::string upload_directory = config::parse_upload_directory(d);
 			if (!location_config._uploadDirectory.empty())
 				config::duplicate_throw(d);
 			location_config._uploadDirectory = upload_directory;
 		}
 		else if (d.name == "cgi")
 		{
-			std::pair<std::string, std::string> handler = config::get_cgi_handler_pair(d);
+			std::pair<std::string, std::string> handler = config::parse_cgi_handler_pair(d);
 			if (location_config._cgiHandlers.count(handler.first) != 0)
 				throw ConfigError("duplicate cgi extension \"" + handler.first + "\"", d.line);
 			location_config._cgiHandlers.insert(handler);
@@ -265,27 +265,27 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		if (d.name == "location")
 		{
 			// locations are built after the loop, but a faulty location line has to throw immediately
-			location_directives.push_back(config::get_location_directive(d));
+			location_directives.push_back(config::parse_location_directive(d));
 		}
 		// LISTEN ADDRESS HANDLING
 		else if (d.name == "listen")
-			server_config._listenAddresses.push_back(config::get_listen_address(d));
+			server_config._listenAddresses.push_back(config::parse_listen_address(d));
 		// SERVER NAME HANDLING
 		else if (d.name == "server_name")
 		{
-			std::vector<std::string> server_names = config::get_server_names(d);
+			std::vector<std::string> server_names = config::parse_server_names(d);
 			server_config._serverNames.insert(server_config._serverNames.end(), server_names.begin(), server_names.end());
 		}
 		else if (d.name == "root")
 		{
-			std::string root = config::get_root(d);
+			std::string root = config::parse_root(d);
 			if (inherited_values.root.has_value())
 				config::duplicate_throw(d);
 			inherited_values.root = root;
 		}
 		else if (d.name == "index")
 		{
-			std::vector<std::string> index_files = config::get_index_files(d);
+			std::vector<std::string> index_files = config::parse_index_files(d);
 			// multiple occurrences of "index" in a server block are allowed
 			// can't .insert() on an optional without value
 			if (!inherited_values.index_files.has_value())
@@ -295,21 +295,21 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		}
 		else if (d.name == "autoindex")
 		{
-			bool auto_index = config::get_auto_index(d);
+			bool auto_index = config::parse_auto_index(d);
 			if (inherited_values.auto_index.has_value())
 				config::duplicate_throw(d);
 			inherited_values.auto_index = auto_index;
 		}
 		else if (d.name == "client_max_body_size")
 		{
-			std::size_t max_body_size = config::get_max_body_size(d);
+			std::size_t max_body_size = config::parse_max_body_size(d);
 			if (inherited_values.max_body_size.has_value())
 				config::duplicate_throw(d);
 			inherited_values.max_body_size = max_body_size;
 		}
 		else if (d.name == "error_page")
 		{
-			std::map<std::size_t, std::string> error_pages = config::get_error_pages(d);
+			std::map<std::size_t, std::string> error_pages = config::parse_error_pages(d);
 			for (const auto &ep : error_pages)
 			{
 				// nginx only uses the first entry in case of duplicate error codes
@@ -319,7 +319,7 @@ ServerConfig ConfigBuilder::buildServer(const Directive &server_block)
 		}
 		else if (d.name == "return")
 		{
-			Return return_directive = config::get_return(d);
+			Return return_directive = config::parse_return(d);
 			// nginx only uses the first mention of "return", ignores all others
 			if (!server_config._returnDirective.has_value())
 				server_config._returnDirective = return_directive;

@@ -25,7 +25,7 @@ bool isdigit_string(const std::string &str)
 }
 
 // benefits of std::from_chars over std::stoi: parses directly into std::size_t, does not throw in case of conversion error or overflow and is stricter than std::stoi (doesn't accept +/- and doesn't just stop at non-digit)
-std::size_t str_to_size_t(const std::string &str)
+std::size_t string_to_size_t(const std::string &str)
 {
 	// .data() from std::string returns a pointer to the first character
 	const char *start = str.data();
@@ -38,7 +38,7 @@ std::size_t str_to_size_t(const std::string &str)
 	from_chars_result = std::from_chars(start, end, result);
 	// only valid result: error code object is blank ({}) and the pointer points at the end of the digits; anything else = error
 	if (from_chars_result.ec != std::errc { } || (from_chars_result.ptr != end))
-		throw std::invalid_argument("str_to_size_t: not a valid number");
+		throw std::invalid_argument("string_to_size_t: not a valid number");
 
 	return (result);
 }

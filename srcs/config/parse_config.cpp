@@ -17,7 +17,7 @@
 #define DEFAULT_CONFIG "./configs/webserv.conf"
 #endif
 
-static std::ifstream get_filestream(const std::string &filepath)
+static std::ifstream open_filestream(const std::string &filepath)
 {
 	// choosing ifstream over fstream means: "i" = "in" = "read" only
 	// as such, writability is never checked, as it isn't needed
@@ -79,7 +79,7 @@ Config parse_config(int argc, char **argv)
 	{
 		std::vector<Token> tokens;
 		std::vector<Directive> directives;
-		std::ifstream filestream = get_filestream(filepath);
+		std::ifstream filestream = open_filestream(filepath);
 		Tokenizer t(condense_to_string(filestream));
 		tokens = t.tokenize();
 		Parser parser(tokens);

@@ -142,3 +142,17 @@ server {
 **21) directives without NGINX equivalent**
 - `upload_dir` and `cgi` are webserv's own directives; NGINX doesn't have those
 - `cgi EXTENSION [interpreter path]`: with an interpreter, the script is run by it; without, the script is executed directly
+
+**22) `root` (mixed root rule)**
+- partially emulated: subject and NGINX disagree on `root`
+- location with its own `root`: the location prefix is replaced (subject)
+  - `location /kapouet { root /tmp/www; }`: `/kapouet/pouic/toto/pouet` -> `/tmp/www/pouic/toto/pouet`
+- root inherited from the server: the full request path is appended (NGINX)
+  - `server { root ./www/main; location /files {} }`: `/files/a.txt` -> `./www/main/files/a.txt`
+- reason: always replacing would drop inheriting locations' files into one shared folder (`/files/a.txt` -> `./www/main/a.txt`)
+
+**23) response header names**
+- not emulated: NGINX sends capitalized header names (`Content-Type`)
+- webserv sends all header names in lowercase (`content-type`)
+- HTTP treats header names as case-insensitive, so both are valid
+- reason: header names are stored in lowercase, so the same header can't end up twice under different spellings (`Content-Type` + `content-type` are duplicates for webserv)
