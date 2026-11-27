@@ -4,6 +4,7 @@
 #include "utils.hpp"
 
 #include <cctype> // for std::isdigit()
+#include <filesystem> // for std::filesystem::path
 #include <limits>
 #include <optional>
 #include <stdexcept> // for std::invalid_argument
@@ -15,6 +16,29 @@ namespace config
 static void invalid_return_code_throw(const Directive &d, const std::string &str)
 {
 	throw ConfigError("invalid return code \"" + str + "\"", d.line);
+}
+
+static void verify_index_file_path(const std::string &file_path, const Directive &d)
+{
+	// index file name can't be empty or start with a slash (would make it an absolute path to machine root!)
+	if (file_path.empty())
+		throw ConfigError("index \"\" in \"index\" directive is invalid", d.line);
+	if (file_path[0] == '/')
+		throw ConfigError("index \"" + file_path + "\" in \"index\" directive is invalid, it must not start with \"/\"", d.line);
+
+	// check to see if path goes out of bounds via ".."
+	// unlikely mistake by config author, but still worth guarding against
+	std::filesystem::path path(file_path);
+	int depth = 0; // shouldn't go negative, or path went out of bounds!
+	for (const std::filesystem::path &seg : path) //  filesystem::path consists of its segments, all of them also ::path
+	{
+		if (seg.string() == "..")
+			depth--;
+		else if (seg.string() != ".")
+			depth++;
+		if (depth < 0)
+			throw ConfigError("index \"" + file_path + "\" in \"index\" directive is invalid, it must not lead out of the root folder", d.line);
+	}
 }
 
 std::string parse_root(const Directive &d)
@@ -31,8 +55,8 @@ std::vector<std::string> parse_index_files(const Directive &d)
 	if (d.args.size() == 0)
 		invalid_args_size_throw(d);
 	for (const std::string &s : d.args)
-		if (s.empty())
-			throw ConfigError("index \"\" in \"index\" directive is invalid", d.line);
+		verify_index_file_path(s, d);
+
 	return (d.args);
 }
 

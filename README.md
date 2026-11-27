@@ -156,3 +156,10 @@ server {
 - webserv sends all header names in lowercase (`content-type`)
 - HTTP treats header names as case-insensitive, so both are valid
 - reason: header names are stored in lowercase, so the same header can't end up twice under different spellings (`Content-Type` + `content-type` are duplicates for webserv)
+
+**24) `index` file names**
+- not emulated: NGINX treats `index /index.html` as a path from the site's top folder; webserv throws
+- not emulated: NGINX accepts `..` that leads out of the root folder (`index ../secret.html`); webserv throws
+- `..` that stays inside is fine (`index sub/../index.html`)
+- reason: mainly a guard against typos; the config is written by the server's admin, not by clients, so nobody is expected to escape the root folder on purpose
+  - a leading `/` would make the index an absolute path on the machine (`/index.html` in the machine's root instead of the site's)
